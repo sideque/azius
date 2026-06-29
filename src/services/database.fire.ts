@@ -1,0 +1,713 @@
+import {
+  addDoc,
+  collection,
+  deleteDoc,
+  doc,
+  getDoc,
+  getDocs,
+  limit,
+  orderBy,
+  query,
+  runTransaction,
+  setDoc,
+  updateDoc,
+  where,
+} from "firebase/firestore";
+import { db } from "../config/firebase";
+import {
+  CartItem,
+  DashboardStats,
+  LedgerEntry,
+  Payment,
+  PaymentMethod,
+  Product,
+  Sale,
+  SaleItem,
+  SaleWithDetails,
+  Shop,
+  User,
+} from "../types";
+import {
+  generateId,
+  generateInvoiceNumber,
+  toISOString,
+} from "../utils/formatters";
+
+const usersCollection = collection(db, "users");
+const productsCollection = collection(db, "products");
+const shopsCollection = collection(db, "shops");
+const salesCollection = collection(db, "sales");
+const saleItemsCollection = collection(db, "sale_items");
+const paymentsCollection = collection(db, "payments");
+const ledgersCollection = collection(db, "ledgers");
+const cartsCollection = collection(db, "carts");
+
+let initialized = false;
+
+export async function getDatabase(): Promise<void> {
+  if (!initialized) {
+    await ensureSeedData();
+    initialized = true;
+  }
+}
+
+async function ensureSeedData() {
+  const snapshot = await getDocs(query(usersCollection, limit(1)));
+  if (!snapshot.empty) return;
+  await seedDatabase();
+}
+
+async function seedDatabase() {
+  const now = toISOString();
+  const adminId = generateId();
+  const salesId = generateId();
+
+  await setDoc(doc(usersCollection, adminId), {
+    id: adminId,
+    username: "admin",
+    password: "admin123",
+    role: "admin",
+    name: "Administrator",
+    email: "",
+  });
+
+  await setDoc(doc(usersCollection, salesId), {
+    id: salesId,
+    username: "sales",
+    password: "sales123",
+    role: "sales",
+    name: "Sales Representative",
+    email: "",
+  });
+
+  const products = [
+    {
+      name: "Premium Rice 25kg",
+      code: "PR-001",
+      category: "Grains",
+      purchase: 850,
+      selling: 950,
+      stock: 100,
+      unit: "Bag",
+    },
+    {
+      name: "Sunflower Oil 1L",
+      code: "SO-001",
+      category: "Oil",
+      purchase: 120,
+      selling: 145,
+      stock: 200,
+      unit: "Bottle",
+    },
+    {
+      name: "Sugar 1kg",
+      code: "SG-001",
+      category: "Grocery",
+      purchase: 42,
+      selling: 50,
+      stock: 500,
+      unit: "Pack",
+    },
+    {
+      name: "Wheat Flour 10kg",
+      code: "WF-001",
+      category: "Grains",
+      purchase: 320,
+      selling: 380,
+      stock: 80,
+      unit: "Bag",
+    },
+    {
+      name: "Tea Powder 500g",
+      code: "TP-001",
+      category: "Beverages",
+      purchase: 180,
+      selling: 220,
+      stock: 150,
+      unit: "Pack",
+    },
+  ];
+
+  for (const item of products) {
+    await setDoc(doc(productsCollection, generateId()), {
+      id: generateId(),
+      productName: item.name,
+      productCode: item.code,
+      category: item.category,
+      purchasePrice: item.purchase,
+      sellingPrice: item.selling,
+      stockQuantity: item.stock,
+      unit: item.unit,
+      description: "",
+      createdAt: now,
+    });
+  }
+
+  const shops = [
+    {
+      name: "Raj General Store",
+      owner: "Raj Kumar",
+      phone: "9876543210",
+      address: "123 Main Street, Delhi",
+      credit: 50000,
+    },
+    {
+      name: "Sharma Kirana",
+      owner: "Amit Sharma",
+      phone: "9876543211",
+      address: "45 Market Road, Mumbai",
+      credit: 30000,
+    },
+    {
+      name: "City Mart",
+      owner: "Priya Singh",
+      phone: "9876543212",
+      address: "78 Park Avenue, Bangalore",
+      credit: 75000,
+    },
+  ];
+
+  for (const shop of shops) {
+    await setDoc(doc(shopsCollection, generateId()), {
+      id: generateId(),
+      shopName: shop.name,
+      ownerName: shop.owner,
+      phoneNumber: shop.phone,
+      address: shop.address,
+      creditLimit: shop.credit,
+      outstandingBalance: 0,
+      notes: "",
+      createdAt: now,
+    });
+  }
+}
+
+function mapDoc<T>(docSnap: any): T {
+  return { id: docSnap.id, ...(docSnap.data() as T) } as T;
+}
+
+// Auth
+export async function authenticateUser(
+  username: string,
+  password: string,
+): Promise<User | null> {
+  const q = query(
+    usersCollection,
+    where("username", "==", username.trim()),
+    where("password", "==", password),
+    limit(1),
+  );
+  const snapshot = await getDocs(q);
+  if (snapshot.empty) return null;
+  return mapDoc<User>(snapshot.docs[0]);
+}
+
+export async function getUserById(id: string): Promise<User | null> {
+  const snapshot = await getDoc(doc(usersCollection, id));
+  return snapshot.exists() ? mapDoc<User>(snapshot) : null;
+}
+
+export async function updateUserPassword(
+  userId: string,
+  newPassword: string,
+): Promise<void> {
+  await updateDoc(doc(usersCollection, userId), { password: newPassword });
+}
+
+export async function updateUserProfile(
+  userId: string,
+  name: string,
+  email: string,
+): Promise<void> {
+  await updateDoc(doc(usersCollection, userId), { name, email });
+}
+
+// Products
+export async function getProducts(
+  search?: string,
+  category?: string,
+): Promise<Product[]> {
+  const snapshot = await getDocs(productsCollection);
+  let products = snapshot.docs.map(mapDoc<Product>);
+
+  if (search) {
+    const term = search.trim().toLowerCase();
+    products = products.filter((product) => {
+      const productName = product.productName?.toLowerCase() ?? "";
+      const productCode = product.productCode?.toLowerCase() ?? "";
+      const categoryName = product.category?.toLowerCase() ?? "";
+      return (
+        productName.includes(term) ||
+        productCode.includes(term) ||
+        categoryName.includes(term)
+      );
+    });
+  }
+
+  if (category && category !== "All") {
+    products = products.filter((product) => product.category === category);
+  }
+
+  return products.sort((a, b) =>
+    (a.productName ?? "").localeCompare(b.productName ?? ""),
+  );
+}
+
+async function resolveProductDocument(id: string): Promise<{
+  ref: ReturnType<typeof doc>;
+  product: Product | null;
+}> {
+  const directRef = doc(productsCollection, id);
+  const directSnapshot = await getDoc(directRef);
+  if (directSnapshot.exists()) {
+    return { ref: directRef, product: mapDoc<Product>(directSnapshot) };
+  }
+
+  const fallbackQuery = query(
+    productsCollection,
+    where("id", "==", id),
+    limit(1),
+  );
+  const fallbackSnapshot = await getDocs(fallbackQuery);
+  if (!fallbackSnapshot.empty) {
+    const fallbackDoc = fallbackSnapshot.docs[0];
+    return { ref: fallbackDoc.ref, product: mapDoc<Product>(fallbackDoc) };
+  }
+
+  return { ref: directRef, product: null };
+}
+
+export async function getProductById(id: string): Promise<Product | null> {
+  const { product } = await resolveProductDocument(id);
+  return product;
+}
+
+export async function createProduct(
+  product: Omit<Product, "id" | "createdAt">,
+): Promise<Product> {
+  const id = generateId();
+  const createdAt = toISOString();
+  await setDoc(doc(productsCollection, id), {
+    id,
+    ...product,
+    createdAt,
+  });
+  return { ...product, id, createdAt };
+}
+
+export async function updateProduct(
+  id: string,
+  product: Partial<Product>,
+): Promise<void> {
+  const payload: Partial<Product> = {};
+  if (product.productName !== undefined)
+    payload.productName = product.productName;
+  if (product.productCode !== undefined)
+    payload.productCode = product.productCode;
+  if (product.category !== undefined) payload.category = product.category;
+  if (product.purchasePrice !== undefined)
+    payload.purchasePrice = product.purchasePrice;
+  if (product.sellingPrice !== undefined)
+    payload.sellingPrice = product.sellingPrice;
+  if (product.stockQuantity !== undefined)
+    payload.stockQuantity = product.stockQuantity;
+  if (product.unit !== undefined) payload.unit = product.unit;
+  if (product.description !== undefined)
+    payload.description = product.description;
+
+  if (Object.keys(payload).length === 0) return;
+  await updateDoc(doc(productsCollection, id), payload);
+}
+
+export async function deleteProduct(id: string): Promise<void> {
+  const { ref } = await resolveProductDocument(id);
+  await deleteDoc(ref);
+}
+
+export async function getProductCategories(): Promise<string[]> {
+  const snapshot = await getDocs(productsCollection);
+  const categories = snapshot.docs.map(
+    (docSnap) => (docSnap.data() as Product).category || "",
+  );
+  return Array.from(new Set(categories)).sort();
+}
+
+export async function getCart(userId: string): Promise<{
+  cart: CartItem[];
+  selectedShopId: string | null;
+  discount: number;
+}> {
+  const snapshot = await getDoc(doc(cartsCollection, userId));
+  if (!snapshot.exists()) {
+    return { cart: [], selectedShopId: null, discount: 0 };
+  }
+
+  const data = snapshot.data() as {
+    cart?: CartItem[];
+    selectedShopId?: string | null;
+    discount?: number;
+  };
+
+  return {
+    cart: Array.isArray(data.cart) ? data.cart : [],
+    selectedShopId: data.selectedShopId ?? null,
+    discount: Number.isFinite(data.discount) ? data.discount! : 0,
+  };
+}
+
+export async function saveCart(
+  userId: string,
+  cart: CartItem[],
+  selectedShopId: string | null,
+  discount: number,
+): Promise<void> {
+  await setDoc(doc(cartsCollection, userId), {
+    userId,
+    cart,
+    selectedShopId,
+    discount,
+    updatedAt: toISOString(),
+  });
+}
+
+export async function clearCartInDb(userId: string): Promise<void> {
+  await setDoc(doc(cartsCollection, userId), {
+    userId,
+    cart: [],
+    selectedShopId: null,
+    discount: 0,
+    updatedAt: toISOString(),
+  });
+}
+
+// Shops
+export async function getShops(search?: string): Promise<Shop[]> {
+  const snapshot = await getDocs(shopsCollection);
+  let shops = snapshot.docs.map(mapDoc<Shop>);
+
+  if (search) {
+    const term = search.trim().toLowerCase();
+    shops = shops.filter((shop) => {
+      const shopName = shop.shopName?.toLowerCase() ?? "";
+      const ownerName = shop.ownerName?.toLowerCase() ?? "";
+      const phoneNumber = shop.phoneNumber?.toLowerCase() ?? "";
+      return (
+        shopName.includes(term) ||
+        ownerName.includes(term) ||
+        phoneNumber.includes(term)
+      );
+    });
+  }
+
+  return shops.sort((a, b) =>
+    (a.shopName ?? "").localeCompare(b.shopName ?? ""),
+  );
+}
+
+async function resolveShopDocument(id: string): Promise<{
+  ref: ReturnType<typeof doc>;
+  shop: Shop | null;
+}> {
+  const directRef = doc(shopsCollection, id);
+  const directSnapshot = await getDoc(directRef);
+  if (directSnapshot.exists()) {
+    return { ref: directRef, shop: mapDoc<Shop>(directSnapshot) };
+  }
+
+  const fallbackQuery = query(shopsCollection, where("id", "==", id), limit(1));
+  const fallbackSnapshot = await getDocs(fallbackQuery);
+  if (!fallbackSnapshot.empty) {
+    const fallbackDoc = fallbackSnapshot.docs[0];
+    return { ref: fallbackDoc.ref, shop: mapDoc<Shop>(fallbackDoc) };
+  }
+
+  return { ref: directRef, shop: null };
+}
+
+export async function getShopById(id: string): Promise<Shop | null> {
+  const { shop } = await resolveShopDocument(id);
+  return shop;
+}
+
+export async function createShop(
+  shop: Omit<Shop, "id" | "outstandingBalance" | "createdAt">,
+): Promise<Shop> {
+  const id = generateId();
+  const createdAt = toISOString();
+  await setDoc(doc(shopsCollection, id), {
+    id,
+    shopName: shop.shopName,
+    ownerName: shop.ownerName,
+    phoneNumber: shop.phoneNumber,
+    address: shop.address,
+    creditLimit: shop.creditLimit,
+    outstandingBalance: 0,
+    notes: shop.notes,
+    createdAt,
+  });
+  return { ...shop, id, outstandingBalance: 0, createdAt };
+}
+
+export async function updateShop(
+  id: string,
+  shop: Partial<Shop>,
+): Promise<void> {
+  const payload: Partial<Shop> = {};
+  if (shop.shopName !== undefined) payload.shopName = shop.shopName;
+  if (shop.ownerName !== undefined) payload.ownerName = shop.ownerName;
+  if (shop.phoneNumber !== undefined) payload.phoneNumber = shop.phoneNumber;
+  if (shop.address !== undefined) payload.address = shop.address;
+  if (shop.creditLimit !== undefined) payload.creditLimit = shop.creditLimit;
+  if (shop.notes !== undefined) payload.notes = shop.notes;
+  if (Object.keys(payload).length === 0) return;
+  await updateDoc(doc(shopsCollection, id), payload);
+}
+
+export async function deleteShop(id: string): Promise<void> {
+  await deleteDoc(doc(shopsCollection, id));
+}
+
+// Sales
+export async function createSale(
+  shopId: string,
+  items: {
+    productId: string;
+    quantity: number;
+    rate: number;
+    purchasePrice: number;
+  }[],
+  discount: number,
+): Promise<SaleWithDetails> {
+  const saleId = generateId();
+  const invoiceNumber = generateInvoiceNumber();
+  const createdAt = toISOString();
+  const saleItems: SaleItem[] = [];
+  const productSnapshotMap: Record<string, Product> = {};
+
+  const { ref: shopRef, shop: resolvedShop } =
+    await resolveShopDocument(shopId);
+  if (!resolvedShop) throw new Error("Shop not found");
+
+  const resolvedShopId = resolvedShop.id;
+
+  await runTransaction(db, async (transaction) => {
+    const shopSnap = await transaction.get(shopRef);
+    if (!shopSnap.exists()) throw new Error("Shop not found");
+    const shopData = shopSnap.data() as Shop;
+
+    const productSnapshots = await Promise.all(
+      items.map((item) =>
+        transaction.get(doc(productsCollection, item.productId)),
+      ),
+    );
+
+    for (let i = 0; i < items.length; i += 1) {
+      const item = items[i];
+      const productSnap = productSnapshots[i];
+      if (!productSnap.exists()) {
+        throw new Error(`Product not found: ${item.productId}`);
+      }
+      const product = productSnap.data() as Product;
+      const normalizedQuantity = Number(item.quantity) || 0;
+      const availableStock = Number(product.stockQuantity) || 0;
+      const normalizedRate = Number(item.rate) || 0;
+      const normalizedPurchasePrice = Number(item.purchasePrice) || 0;
+
+      if (!Number.isFinite(normalizedQuantity) || normalizedQuantity <= 0) {
+        throw new Error("Each item must have a valid quantity");
+      }
+
+      productSnapshotMap[item.productId] = {
+        ...product,
+        stockQuantity: availableStock,
+        purchasePrice: normalizedPurchasePrice,
+        sellingPrice: normalizedRate,
+      };
+
+      if (normalizedQuantity > availableStock) {
+        throw new Error(
+          `Insufficient stock for ${product.productName}. Available: ${availableStock}`,
+        );
+      }
+    }
+
+    const normalizedDiscount = Number(discount) || 0;
+    const subtotal = items.reduce(
+      (sum, item) => sum + Number(item.quantity) * Number(item.rate),
+      0,
+    );
+    const grandTotal = Math.max(0, subtotal - normalizedDiscount);
+    const itemProfit = items.reduce(
+      (sum, item) =>
+        sum +
+        (Number(item.rate) - Number(item.purchasePrice)) *
+          Number(item.quantity),
+      0,
+    );
+    const profit =
+      subtotal > 0 ? itemProfit * (grandTotal / subtotal) : itemProfit;
+    const currentOutstandingBalance = Number(shopData.outstandingBalance) || 0;
+    const newBalance = currentOutstandingBalance + grandTotal;
+
+    transaction.set(doc(salesCollection, saleId), {
+      id: saleId,
+      invoiceNumber,
+      shopId: resolvedShopId,
+      subtotal,
+      discount,
+      grandTotal,
+      profit,
+      createdAt,
+    });
+
+    for (let i = 0; i < items.length; i += 1) {
+      const item = items[i];
+      const productSnap = productSnapshots[i];
+      if (!productSnap.exists()) {
+        continue;
+      }
+      const product = productSnap.data() as Product;
+      const normalizedQuantity = Number(item.quantity) || 0;
+      const normalizedRate = Number(item.rate) || 0;
+      const itemId = generateId();
+      const total = normalizedQuantity * normalizedRate;
+      transaction.set(doc(saleItemsCollection, itemId), {
+        id: itemId,
+        saleId,
+        productId: item.productId,
+        quantity: normalizedQuantity,
+        rate: normalizedRate,
+        total,
+      });
+      const currentStock = Number(product.stockQuantity) || 0;
+      transaction.update(doc(productsCollection, item.productId), {
+        stockQuantity: Math.max(0, currentStock - normalizedQuantity),
+      });
+      saleItems.push({
+        id: itemId,
+        saleId,
+        productId: item.productId,
+        quantity: normalizedQuantity,
+        rate: normalizedRate,
+        total,
+      });
+    }
+
+    transaction.update(shopRef, { outstandingBalance: newBalance });
+    transaction.set(doc(ledgersCollection, generateId()), {
+      id: generateId(),
+      shopId: resolvedShopId,
+      transactionType: "sale",
+      referenceNumber: invoiceNumber,
+      debit: grandTotal,
+      credit: 0,
+      balance: newBalance,
+      createdAt,
+    });
+  });
+
+  const persistedShop = await getShopById(shopId);
+  const shopName = persistedShop?.shopName ?? "";
+  const saleItemsWithName = await Promise.all(
+    saleItems.map(async (item) => {
+      const product = await getProductById(item.productId);
+      return {
+        ...item,
+        productName: product?.productName ?? "",
+      };
+    }),
+  );
+
+  return {
+    id: saleId,
+    invoiceNumber,
+    shopId: resolvedShopId,
+    subtotal: saleItems.reduce((sum, item) => sum + item.total, 0),
+    discount,
+    grandTotal: saleItems.reduce((sum, item) => sum + item.total, 0) - discount,
+    profit: saleItemsWithName.reduce(
+      (sum, item) =>
+        sum +
+        (item.rate - (productSnapshotMap[item.productId]?.purchasePrice ?? 0)) *
+          item.quantity,
+      0,
+    ),
+    createdAt,
+    shopName,
+    items: saleItemsWithName,
+  };
+}
+
+// Monthly Chart Data
+export async function getMonthlyChartData(): Promise<{ month: string; sales: number; profit: number }[]> {
+  const snapshot = await getDocs(salesCollection);
+  const salesDocs = snapshot.docs.map(mapDoc<Sale>);
+
+  const monthMap = new Map<string, { sales: number; profit: number }>();
+
+  for (const sale of salesDocs) {
+    if (!sale.createdAt) continue;
+    const month = sale.createdAt.slice(0, 7); // e.g. "2024-06"
+    const existing = monthMap.get(month) ?? { sales: 0, profit: 0 };
+    monthMap.set(month, {
+      sales: existing.sales + (Number(sale.grandTotal) || 0),
+      profit: existing.profit + (Number(sale.profit) || 0),
+    });
+  }
+
+  return Array.from(monthMap.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([month, { sales, profit }]) => ({ month, sales, profit }));
+}
+
+// Recent Sales
+export async function getRecentSales(limitNum: number): Promise<SaleWithDetails[]> {
+  // Query the most recent sales ordered by creation timestamp
+  const recentSalesQuery = query(salesCollection, orderBy('createdAt', 'desc'), limit(limitNum));
+  const salesSnap = await getDocs(recentSalesQuery);
+
+  const results: SaleWithDetails[] = [];
+  for (const saleDoc of salesSnap.docs) {
+    const sale = mapDoc<Sale>(saleDoc);
+    // Fetch associated sale items
+    const itemsSnap = await getDocs(query(saleItemsCollection, where('saleId', '==', sale.id)));
+    const rawItems = itemsSnap.docs.map(mapDoc<SaleItem>);
+
+    // Enrich items with product name
+    const enrichedItems = await Promise.all(
+      rawItems.map(async (item) => {
+        const product = await getProductById(item.productId);
+        return { ...item, productName: product?.productName ?? '' } as SaleItem & { productName: string };
+      }),
+    );
+
+    // Compute totals and profit
+    const subtotal = enrichedItems.reduce((sum, it) => sum + (it.total ?? 0), 0);
+    const discount = (sale as any).discount ?? 0;
+    const grandTotal = subtotal - discount;
+    // Compute profit using purchase price from each product
+    const profit = await Promise.all(enrichedItems.map(async (it) => {
+      const prod = await getProductById(it.productId);
+      const purchasePrice = prod?.purchasePrice ?? 0;
+      return (it.rate - purchasePrice) * it.quantity;
+    })).then(vals => vals.reduce((sum, v) => sum + v, 0));
+
+    // Resolve shop name
+    const shop = await getShopById(sale.shopId);
+    const shopName = shop?.shopName ?? '';
+
+    results.push({
+      id: sale.id,
+      invoiceNumber: (sale as any).invoiceNumber ?? '',
+      shopId: sale.shopId,
+      subtotal,
+      discount,
+      grandTotal,
+      profit,
+      createdAt: sale.createdAt,
+      shopName,
+      items: enrichedItems,
+    });
+  }
+  return results;
+}

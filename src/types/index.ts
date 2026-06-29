@@ -126,3 +126,8 @@ export interface SaleWithDetails extends Sale {
 export interface PaymentWithShop extends Payment {
   shopName: string;
 }
+export interface MonthlyChartData {
+  month: string;
+  sales: number;
+  profit: number;
+}

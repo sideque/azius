@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "ameerPro",
-    "slug": "ameerPro",
+    "name": "Azius",
+    "slug": "Azius",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -22,7 +22,8 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-asset"
+      "expo-asset",
+      "expo-sqlite"
     ]
   }
 }

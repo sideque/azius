@@ -1,5 +1,4 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { User } from '../../types';
 
 interface AuthState {
@@ -34,9 +33,6 @@ const authSlice = createSlice({
       state.rememberMe = action.payload.rememberMe;
       state.loading = false;
       state.error = null;
-      if (action.payload.rememberMe) {
-        AsyncStorage.setItem('@auth_user', JSON.stringify(action.payload.user));
-      }
     },
     loginFailure: (state, action: PayloadAction<string>) => {
       state.loading = false;
@@ -46,7 +42,6 @@ const authSlice = createSlice({
       state.user = null;
       state.isAuthenticated = false;
       state.rememberMe = false;
-      AsyncStorage.removeItem('@auth_user');
     },
     restoreSession: (state, action: PayloadAction<User>) => {
       state.user = action.payload;

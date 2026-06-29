@@ -20,6 +20,7 @@ export function DashboardScreen() {
   const recentPayments = useAppSelector((s) => s.payments.recentPayments);
 
   const load = useCallback(() => {
+    console.log("🚀 DASHBOARD LOADING START");
     dispatch(fetchDashboard());
     dispatch(fetchRecentSales());
     dispatch(fetchRecentPayments());
@@ -31,11 +32,9 @@ export function DashboardScreen() {
 
   const stats = dashboardStats;
 
-  const chartLabels = chartData.length > 0
-    ? chartData.map((d) => d.month.slice(5))
-    : ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
-  const salesData = chartData.length > 0 ? chartData.map((d) => d.sales) : [0, 0, 0, 0, 0, 0];
-  const profitData = chartData.length > 0 ? chartData.map((d) => d.profit) : [0, 0, 0, 0, 0, 0];
+  const chartLabels: string[] = (chartData ?? []).map((d: { month: string }) => d.month);
+  const salesData: number[] = (chartData ?? []).map((d: { sales: number }) => d.sales);
+  const profitData: number[] = (chartData ?? []).map((d: { profit: number }) => d.profit);
 
   return (
     <ScrollView
@@ -98,7 +97,7 @@ export function DashboardScreen() {
       {topProducts.length === 0 ? (
         <EmptyState title="No sales yet" message="Top products will appear here" icon="📊" />
       ) : (
-        topProducts.map((p, i) => (
+        topProducts.map((p: { productName: string; totalQuantity: number; totalRevenue: number }, i: number) => (
           <View key={i} style={[styles.listItem, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <Text style={[styles.rank, { color: colors.primary }]}>#{i + 1}</Text>
             <View style={{ flex: 1 }}>
@@ -126,7 +125,7 @@ export function DashboardScreen() {
       )}
 
       <Text style={[styles.section, { color: colors.text }]}>Recent Payments</Text>
-      {recentPayments.map((p) => <PaymentCard key={p.id} payment={p} />)}
+      {recentPayments.map((p: (typeof recentPayments)[number]) => <PaymentCard key={p.id} payment={p} />)}
       <View style={{ height: 24 }} />
     </ScrollView>
   );

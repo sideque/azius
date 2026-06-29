@@ -711,3 +711,175 @@ export async function getRecentSales(limitNum: number): Promise<SaleWithDetails[
   }
   return results;
 }
+
+
+// Get Sales
+export async function getSales(
+  startDate?: string,
+  endDate?: string,
+  shopId?: string
+): Promise<SaleWithDetails[]> {
+
+  const sales = await getRecentSales(10000);
+
+  return sales.filter((sale) => {
+
+    let ok = true;
+
+    if (shopId) {
+      ok = ok && sale.shopId === shopId;
+    }
+
+    if (startDate) {
+      ok = ok && sale.createdAt >= startDate;
+    }
+
+    if (endDate) {
+      ok = ok && sale.createdAt <= endDate;
+    }
+
+    return ok;
+  });
+
+}
+
+export async function getPayments(
+  startDate?: string,
+  endDate?: string,
+  shopId?: string
+): Promise<Payment[]> {
+
+  const snapshot = await getDocs(paymentsCollection);
+
+  let payments = snapshot.docs.map(mapDoc<Payment>);
+
+  if (shopId) {
+    payments = payments.filter(p => p.shopId === shopId);
+  }
+
+  if (startDate) {
+    payments = payments.filter(p => p.createdAt >= startDate);
+  }
+
+  if (endDate) {
+    payments = payments.filter(p => p.createdAt <= endDate);
+  }
+
+  return payments.sort((a, b) =>
+    b.createdAt.localeCompare(a.createdAt)
+  );
+
+}
+
+export async function getDashboardStats(): Promise<DashboardStats> {
+  const [shops, products, sales, payments] = await Promise.all([
+    getShops(),
+    getProducts(),
+    getRecentSales(10000),
+    getPayments(),
+  ]);
+
+  const now = new Date();
+
+  const today = now.toISOString().slice(0, 10);
+  const month = now.toISOString().slice(0, 7);
+  const year = now.getFullYear().toString();
+
+  const salesToday = sales
+    .filter((s) => s.createdAt.startsWith(today))
+    .reduce((sum, s) => sum + s.grandTotal, 0);
+
+  const salesMonth = sales
+    .filter((s) => s.createdAt.startsWith(month))
+    .reduce((sum, s) => sum + s.grandTotal, 0);
+
+  const salesYear = sales
+    .filter((s) => s.createdAt.startsWith(year))
+    .reduce((sum, s) => sum + s.grandTotal, 0);
+
+  const profitToday = sales
+    .filter((s) => s.createdAt.startsWith(today))
+    .reduce((sum, s) => sum + s.profit, 0);
+
+  const profitMonth = sales
+    .filter((s) => s.createdAt.startsWith(month))
+    .reduce((sum, s) => sum + s.profit, 0);
+
+  const profitYear = sales
+    .filter((s) => s.createdAt.startsWith(year))
+    .reduce((sum, s) => sum + s.profit, 0);
+
+  const outstandingBalance = shops.reduce(
+    (sum, shop) => sum + (shop.outstandingBalance ?? 0),
+    0
+  );
+
+  const paymentsCollected = payments.reduce(
+    (sum, payment) => sum + payment.amount,
+    0
+  );
+
+  return {
+    totalShops: shops.length,
+    totalProducts: products.length,
+    salesToday,
+    salesMonth,
+    salesYear,
+    profitToday,
+    profitMonth,
+    profitYear,
+    outstandingBalance,
+    paymentsCollected,
+  };
+}
+
+
+export async function getTopSellingProducts() {
+  const snapshot = await getDocs(saleItemsCollection);
+
+  const saleItems = snapshot.docs.map(mapDoc<SaleItem>);
+
+  const map = new Map<
+    string,
+    {
+      productName: string;
+      totalQuantity: number;
+      totalRevenue: number;
+    }
+  >();
+
+  for (const item of saleItems) {
+    const product = await getProductById(item.productId);
+
+    const existing = map.get(item.productId) ?? {
+      productName: product?.productName ?? "Unknown Product",
+      totalQuantity: 0,
+      totalRevenue: 0,
+    };
+
+    existing.totalQuantity += item.quantity;
+    existing.totalRevenue += item.total;
+
+    map.set(item.productId, existing);
+  }
+
+  return Array.from(map.values())
+    .sort((a, b) => b.totalQuantity - a.totalQuantity)
+    .slice(0, 10);
+}
+
+
+export async function getRecentPayments(limitNum: number): Promise<Payment[]> {
+
+  const q = query(
+    paymentsCollection,
+    orderBy("createdAt", "desc"),
+    limit(limitNum)
+  );
+
+  const snapshot = await getDocs(q);
+
+  return snapshot.docs.map(mapDoc<Payment>);
+}
+
+

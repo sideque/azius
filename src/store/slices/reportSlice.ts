@@ -23,16 +23,33 @@ const initialState: ReportState = {
   error: null,
 };
 
-export const fetchDashboard = createAsyncThunk('reports/dashboard', async () => {
-  const [stats, topProducts, chartData, recentSales, recentPayments] = await Promise.all([
-    db.getDashboardStats(),
-    db.getTopSellingProducts(),
-    db.getMonthlyChartData(),
-    db.getRecentSales(5),
-    db.getRecentPayments(5),
-  ]);
-  return { stats, topProducts, chartData, recentSales, recentPayments };
-});
+export const fetchDashboard = createAsyncThunk(
+  "reports/dashboard",
+  async () => {
+    try {
+      const stats = await db.getDashboardStats();
+
+      const topProducts = await db.getTopSellingProducts();
+
+      const chartData = await db.getMonthlyChartData();
+
+      const recentSales = await db.getRecentSales(5);
+
+      const recentPayments = await db.getRecentPayments(5);
+
+      return {
+        stats,
+        topProducts,
+        chartData,
+        recentSales,
+        recentPayments,
+      };
+    } catch (err) {
+      console.error("❌ Dashboard Error:", err);
+      throw err;
+    }
+  }
+);
 
 export const fetchSalesReport = createAsyncThunk('reports/sales', async (filter: ReportFilter) => {
   const { startDate, endDate } = getDateRange(filter.period, filter.startDate, filter.endDate);

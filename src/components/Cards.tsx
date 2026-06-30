@@ -1,5 +1,5 @@
 import React from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View, Pressable } from 'react-native';
 import { SaleWithDetails } from '../types';
 import { formatCurrency, formatDateTime } from '../utils/formatters';
 import { useTheme } from '../theme/ThemeContext';
@@ -21,7 +21,7 @@ const styles = StyleSheet.create({
   headerCell: { fontWeight: '700' },
 });
 
-export function InvoiceCard({ sale }: { sale: SaleWithDetails }) {
+export function InvoiceCard({ sale, onEdit, onDelete }: { sale: SaleWithDetails, onEdit?: () => void, onDelete?: () => void }) {
   const { colors } = useTheme();
   return (
     <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -41,11 +41,25 @@ export function InvoiceCard({ sale }: { sale: SaleWithDetails }) {
       <View style={styles.row}><Text style={{ color: colors.textSecondary }}>Subtotal</Text><Text style={{ color: colors.text }}>{formatCurrency(sale.subtotal)}</Text></View>
       {sale.discount > 0 && <View style={styles.row}><Text style={{ color: colors.textSecondary }}>Discount</Text><Text style={{ color: colors.error }}>-{formatCurrency(sale.discount)}</Text></View>}
       <View style={styles.row}><Text style={[styles.grand, { color: colors.text }]}>Grand Total</Text><Text style={[styles.grand, { color: colors.primary }]}>{formatCurrency(sale.grandTotal)}</Text></View>
+      {(onEdit || onDelete) && (
+        <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 12, borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 8 }}>
+          {onEdit && (
+            <Pressable onPress={onEdit} style={{ paddingHorizontal: 12, paddingVertical: 6, backgroundColor: colors.primary + '20', borderRadius: 6, marginRight: onDelete ? 8 : 0 }}>
+              <Text style={{ color: colors.primary, fontSize: 12, fontWeight: '600' }}>Edit</Text>
+            </Pressable>
+          )}
+          {onDelete && (
+            <Pressable onPress={onDelete} style={{ paddingHorizontal: 12, paddingVertical: 6, backgroundColor: colors.error + '20', borderRadius: 6 }}>
+              <Text style={{ color: colors.error, fontSize: 12, fontWeight: '600' }}>Delete</Text>
+            </Pressable>
+          )}
+        </View>
+      )}
     </View>
   );
 }
 
-export function PaymentCard({ payment }: { payment: { shopName: string; amount: number; paymentMethod: string; paymentDate: string; notes?: string } }) {
+export function PaymentCard({ payment, onEdit, onDelete }: { payment: { shopName: string; amount: number; paymentMethod: string; paymentDate: string; notes?: string }, onEdit?: () => void, onDelete?: () => void }) {
   const { colors } = useTheme();
   return (
     <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -55,14 +69,28 @@ export function PaymentCard({ payment }: { payment: { shopName: string; amount: 
       </View>
       <Text style={{ color: colors.textSecondary, fontSize: 13 }}>{payment.paymentMethod} • {formatDateTime(payment.paymentDate)}</Text>
       {payment.notes ? <Text style={{ color: colors.textMuted, fontSize: 12, marginTop: 4 }}>{payment.notes}</Text> : null}
+      {(onEdit || onDelete) && (
+        <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 12, borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 8 }}>
+          {onEdit && (
+            <Pressable onPress={onEdit} style={{ paddingHorizontal: 12, paddingVertical: 6, backgroundColor: colors.primary + '20', borderRadius: 6, marginRight: onDelete ? 8 : 0 }}>
+              <Text style={{ color: colors.primary, fontSize: 12, fontWeight: '600' }}>Edit</Text>
+            </Pressable>
+          )}
+          {onDelete && (
+            <Pressable onPress={onDelete} style={{ paddingHorizontal: 12, paddingVertical: 6, backgroundColor: colors.error + '20', borderRadius: 6 }}>
+              <Text style={{ color: colors.error, fontSize: 12, fontWeight: '600' }}>Delete</Text>
+            </Pressable>
+          )}
+        </View>
+      )}
     </View>
   );
 }
 
-export function LedgerCard({ entry }: { entry: { transactionType: string; referenceNumber: string; debit: number; credit: number; balance: number; createdAt: string } }) {
+export function LedgerCard({ entry, onPress, onEdit, onDelete }: { entry: { transactionType: string; referenceNumber: string; debit: number; credit: number; balance: number; createdAt: string }, onPress?: () => void, onEdit?: () => void, onDelete?: () => void }) {
   const { colors } = useTheme();
   const isSale = entry.transactionType === 'sale';
-  return (
+  const CardContent = (
     <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
       <View style={styles.header}>
         <View>
@@ -77,8 +105,29 @@ export function LedgerCard({ entry }: { entry: { transactionType: string; refere
         <Text style={{ color: colors.text }}>{isSale ? `+${formatCurrency(entry.debit)}` : `-${formatCurrency(entry.credit)}`}</Text>
         <Text style={{ color: colors.text, fontWeight: '700' }}>Bal: {formatCurrency(entry.balance)}</Text>
       </View>
+      {(onPress || onEdit || onDelete) && (
+        <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 12, borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 8 }}>
+          {onPress && (
+            <Pressable onPress={onPress} style={{ paddingHorizontal: 12, paddingVertical: 6, backgroundColor: colors.primary + '20', borderRadius: 6, marginRight: (onEdit || onDelete) ? 8 : 0 }}>
+              <Text style={{ color: colors.primary, fontSize: 12, fontWeight: '600' }}>View Details</Text>
+            </Pressable>
+          )}
+          {onEdit && (
+            <Pressable onPress={onEdit} style={{ paddingHorizontal: 12, paddingVertical: 6, backgroundColor: colors.primary + '20', borderRadius: 6, marginRight: onDelete ? 8 : 0 }}>
+              <Text style={{ color: colors.primary, fontSize: 12, fontWeight: '600' }}>Edit</Text>
+            </Pressable>
+          )}
+          {onDelete && (
+            <Pressable onPress={onDelete} style={{ paddingHorizontal: 12, paddingVertical: 6, backgroundColor: colors.error + '20', borderRadius: 6 }}>
+              <Text style={{ color: colors.error, fontSize: 12, fontWeight: '600' }}>Delete</Text>
+            </Pressable>
+          )}
+        </View>
+      )}
     </View>
   );
+
+  return CardContent;
 }
 
 export function DataTable({ headers, rows }: { headers: string[]; rows: string[][] }) {

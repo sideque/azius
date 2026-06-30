@@ -93,7 +93,6 @@ export function CollectPaymentScreen() {
       <DatePickerField label="Payment Date" value={paymentDate} onChange={setPaymentDate} />
       <CustomInput label="Notes" value={notes} onChangeText={setNotes} multiline numberOfLines={3} />
       <CustomButton title="Save Payment" onPress={handleSave} loading={loading} />
-      <CustomButton title="Generate Receipt" onPress={() => lastPayment && setShowReceipt(true)} variant="outline" style={{ marginTop: 12 }} disabled={!lastPayment} />
 
       <Modal visible={showReceipt} title="Payment Receipt" onClose={() => { setShowReceipt(false); dispatch(clearLastPayment()); }}>
         {lastPayment && (

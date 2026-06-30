@@ -24,7 +24,7 @@ export const fetchProducts = createAsyncThunk(
   "products/fetchAll",
   async (_, { getState }) => {
     const state = getState() as { products: ProductState };
-    return db.getProducts(state.products.search, state.products.categoryFilter);
+    return db.getProducts({ search: state.products.search, category: state.products.categoryFilter });
   },
 );
 
@@ -77,7 +77,7 @@ const productSlice = createSlice({
       .addCase(fetchProducts.pending, (state) => {
         state.loading = true;
         state.error = null;
-        state.items = [];
+        // Keep existing items to avoid flicker and preserve newly added products
       })
       .addCase(fetchProducts.fulfilled, (state, action) => {
         state.loading = false;

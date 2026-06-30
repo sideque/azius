@@ -15,6 +15,8 @@ export type AdminDrawerParamList = {
   Reports: undefined;
   Notifications: undefined;
   Settings: undefined;
+  EditPayment: { paymentId: string; receiptNumber: string };
+  EditSale: { saleId: string; invoiceNumber: string };
 };
 
 export type SalesTabParamList = {

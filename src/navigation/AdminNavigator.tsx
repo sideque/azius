@@ -9,6 +9,8 @@ import { ShopFormScreen } from '../screens/admin/ShopFormScreen';
 import { ReportsScreen } from '../screens/admin/ReportsScreen';
 import { NotificationsScreen } from '../screens/admin/NotificationsScreen';
 import { SettingsScreen } from '../screens/admin/SettingsScreen';
+import { EditPaymentScreen } from '../screens/admin/EditPaymentScreen';
+import { EditSaleScreen } from '../screens/admin/EditSaleScreen';
 import { CustomDrawerContent } from './CustomDrawerContent';
 import { useTheme } from '../theme/ThemeContext';
 
@@ -35,6 +37,8 @@ export function AdminNavigator() {
       <Drawer.Screen name="Reports" component={ReportsScreen} options={{ title: 'Reports' }} />
       <Drawer.Screen name="Notifications" component={NotificationsScreen} options={{ title: 'Notifications' }} />
       <Drawer.Screen name="Settings" component={SettingsScreen} options={{ title: 'Settings' }} />
+      <Drawer.Screen name="EditPayment" component={EditPaymentScreen} options={{ title: 'Edit Payment', drawerItemStyle: { display: 'none' } }} />
+      <Drawer.Screen name="EditSale" component={EditSaleScreen} options={{ title: 'Edit Sale', drawerItemStyle: { display: 'none' } }} />
     </Drawer.Navigator>
   );
 }

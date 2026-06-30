@@ -59,6 +59,30 @@ export const createSale = createAsyncThunk(
   },
 );
 
+export const removeSale = createAsyncThunk(
+  "sales/remove",
+  async (id: string, { rejectWithValue }) => {
+    try {
+      await db.deleteSale(id);
+      return id;
+    } catch (e) {
+      return rejectWithValue(e instanceof Error ? e.message : "Failed to delete sale");
+    }
+  },
+);
+
+export const updateSale = createAsyncThunk(
+  "sales/update",
+  async (params: { id: string, data: { items: any[], subtotal: number, discount: number, grandTotal: number, profit: number } }, { rejectWithValue }) => {
+    try {
+      await db.updateSaleData(params.id, params.data);
+      return params.id;
+    } catch (e) {
+      return rejectWithValue(e instanceof Error ? e.message : "Failed to update sale");
+    }
+  }
+);
+
 export const fetchRecentSales = createAsyncThunk(
   "sales/fetchRecent",
   async () => {

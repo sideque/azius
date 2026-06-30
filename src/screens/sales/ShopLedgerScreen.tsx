@@ -1,12 +1,17 @@
 import React, { useCallback, useState } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, Text, View, Alert } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { Dropdown, EmptyState, LedgerCard, LoadingComponent } from '../../components';
+import { Dropdown, EmptyState, LedgerCard, LoadingComponent, Modal, CustomButton, InvoiceCard, PaymentCard } from '../../components';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { fetchShops } from '../../store/slices/shopSlice';
 import { fetchLedger } from '../../store/slices/ledgerSlice';
+import { removeSale } from '../../store/slices/salesSlice';
+import { removePayment } from '../../store/slices/paymentSlice';
+import * as db from '../../services/database';
 import { useTheme } from '../../theme/ThemeContext';
 import { formatCurrency, formatDate, getDateRange } from '../../utils/formatters';
+
+import { LedgerEntry, SaleWithDetails, Payment } from '../../types';
 
 type FilterPeriod = 'daily' | 'monthly' | 'custom';
 
@@ -17,6 +22,12 @@ export function ShopLedgerScreen() {
   const { entries, selectedShop, loading } = useAppSelector((s) => s.ledger);
   const [shopId, setShopId] = useState('');
   const [period, setPeriod] = useState<FilterPeriod>('monthly');
+
+  // Ledger entry viewing state
+  const [selectedEntry, setSelectedEntry] = useState<LedgerEntry | null>(null);
+  const [entryDetails, setEntryDetails] = useState<SaleWithDetails | (Payment & { shopName: string }) | null>(null);
+  const [detailsLoading, setDetailsLoading] = useState(false);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
 
   const loadShops = useCallback(() => dispatch(fetchShops()), [dispatch]);
   useFocusEffect(useCallback(() => { loadShops(); }, [loadShops]));
@@ -33,6 +44,72 @@ export function ShopLedgerScreen() {
     { label: 'This Month', value: 'monthly' },
     { label: 'All Time', value: 'custom' },
   ];
+
+  const handleLedgerPress = async (entry: LedgerEntry) => {
+    setSelectedEntry(entry);
+    setShowDetailsModal(true);
+    setDetailsLoading(true);
+    setEntryDetails(null);
+    try {
+      if (entry.transactionType === "sale") {
+        const details = await db.getSaleByInvoiceNumber(entry.referenceNumber);
+        setEntryDetails(details);
+      } else {
+        const details = await db.getPaymentByReceiptNumber(entry.referenceNumber);
+        setEntryDetails(details);
+      }
+    } catch (e) {
+      Alert.alert("Error", "Failed to load details");
+    } finally {
+      setDetailsLoading(false);
+    }
+  };
+
+  const handleEditEntry = (entry: LedgerEntry) => {
+    Alert.alert("Edit", "Edit functionality coming soon!");
+  };
+
+  const handleDeleteEntry = (entry: LedgerEntry | null = selectedEntry) => {
+    if (!entry) return;
+    Alert.alert(
+      "Confirm Delete",
+      `Are you sure you want to delete this ${entry.transactionType}?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              let targetId = entryDetails?.id;
+              // If we are deleting directly from the card and don't have details loaded yet
+              if (!targetId || selectedEntry?.id !== entry.id) {
+                 if (entry.transactionType === "sale") {
+                   const details = await db.getSaleByInvoiceNumber(entry.referenceNumber);
+                   targetId = details?.id;
+                 } else {
+                   const details = await db.getPaymentByReceiptNumber(entry.referenceNumber);
+                   targetId = details?.id;
+                 }
+              }
+
+              if (!targetId) throw new Error("Could not find record to delete");
+
+              if (entry.transactionType === "sale") {
+                await dispatch(removeSale(targetId)).unwrap();
+              } else if (entry.transactionType === "payment") {
+                await dispatch(removePayment(targetId)).unwrap();
+              }
+              setShowDetailsModal(false);
+              loadLedger(shopId, period); // Reload ledger
+            } catch (e: any) {
+              Alert.alert("Error", e?.message || "Failed to delete");
+            }
+          },
+        },
+      ]
+    );
+  };
 
   const lastSale = entries.find((e) => e.transactionType === 'sale');
   const lastPayment = entries.find((e) => e.transactionType === 'payment');
@@ -96,12 +173,31 @@ export function ShopLedgerScreen() {
               data={entries}
               keyExtractor={(item) => item.id}
               ListEmptyComponent={<EmptyState title="No Transactions" message="No ledger entries for this period" icon="📒" />}
-              renderItem={({ item }) => <LedgerCard entry={item} />}
+              renderItem={({ item }) => <LedgerCard entry={item} onPress={() => handleLedgerPress(item)} />}
               style={{ flex: 1 }}
             />
           )}
         </>
       )}
+
+      <Modal visible={showDetailsModal} title={`${selectedEntry?.transactionType === 'sale' ? 'Sale' : 'Payment'} Details`} onClose={() => setShowDetailsModal(false)}>
+        {detailsLoading ? (
+          <LoadingComponent />
+        ) : entryDetails ? (
+          <View>
+            {selectedEntry?.transactionType === 'sale' ? (
+              <InvoiceCard sale={entryDetails as SaleWithDetails} />
+            ) : (
+              <PaymentCard payment={entryDetails as any} />
+            )}
+            <View style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 16 }}>
+              <CustomButton title="Close" onPress={() => setShowDetailsModal(false)} variant="outline" style={{ flex: 1 }} />
+            </View>
+          </View>
+        ) : (
+          <Text style={{ color: colors.textSecondary, textAlign: 'center', marginVertical: 20 }}>Details not found</Text>
+        )}
+      </Modal>
     </View>
   );
 }

@@ -20,6 +20,8 @@ export interface Product {
   unit: string;
   description: string;
   createdAt: string;
+  /** Optional searchable concatenated keywords for client‑side fallback */
+  searchKeywords?: string;
 }
 
 export interface Shop {
@@ -63,6 +65,8 @@ export interface Payment {
   paymentMethod: PaymentMethod;
   notes: string;
   paymentDate: string;
+  createdAt: string;
+  receiptNumber?: string;
 }
 
 export type TransactionType = 'sale' | 'payment';

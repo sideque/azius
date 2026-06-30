@@ -20,9 +20,33 @@ export const collectPayment = createAsyncThunk(
   'payments/collect',
   async (data: { shopId: string; amount: number; paymentMethod: PaymentMethod; notes: string; paymentDate: string }, { rejectWithValue }) => {
     try {
-      return db.createPayment(data.shopId, data.amount, data.paymentMethod, data.notes, data.paymentDate);
+      return await db.createPayment(data.shopId, data.amount, data.paymentMethod, data.notes, data.paymentDate);
     } catch (e) {
       return rejectWithValue(e instanceof Error ? e.message : 'Failed');
+    }
+  },
+);
+
+export const removePayment = createAsyncThunk(
+  'payments/remove',
+  async (id: string, { rejectWithValue }) => {
+    try {
+      await db.deletePayment(id);
+      return id;
+    } catch (e) {
+      return rejectWithValue(e instanceof Error ? e.message : 'Failed to delete payment');
+    }
+  },
+);
+
+export const updatePayment = createAsyncThunk(
+  'payments/update',
+  async (params: { id: string, data: { amount: number; paymentMethod: PaymentMethod; paymentDate: string; notes?: string } }, { rejectWithValue }) => {
+    try {
+      await db.updatePaymentData(params.id, params.data);
+      return params.id;
+    } catch (e) {
+      return rejectWithValue(e instanceof Error ? e.message : 'Failed to update payment');
     }
   },
 );

@@ -13,13 +13,29 @@ import {
   updateDoc,
   where,
 } from "firebase/firestore";
+
 import { db } from "../config/firebase";
+
+import {
+  CartItem,
+  DashboardStats,
+  LedgerEntry,
+  Payment,
+  PaymentMethod,
+  Product,
+  Sale,
+  SaleItem,
+  SaleWithDetails,
+  PaymentWithShop,
+  Shop,
+  User,
+} from "../types";
+
 import {
   generateId,
   generateInvoiceNumber,
   toISOString,
 } from "../utils/formatters";
-import type { CartItem, DashboardStats, LedgerEntry, Payment, PaymentMethod, PaymentWithShop, Product, Sale, SaleItem, SaleWithDetails, Shop, User } from "../types";
 
 const usersCollection = collection(db, "users");
 const productsCollection = collection(db, "products");
@@ -211,19 +227,21 @@ export async function updateUserProfile(
 }
 
 // Products
+export async function getProducts(
+  search?: string,
+  category?: string,
+): Promise<Product[]> {
 
-export async function getProducts({
-  search,
-  category,
-}: {
-  search?: string;
-  category?: string;
-}): Promise<Product[]> {
   const snapshot = await getDocs(productsCollection);
-  let products = snapshot.docs.map(mapDoc<Product>);
+
+  let products = snapshot.docs.map((doc) => ({
+    id: doc.id,
+    ...doc.data(),
+  })) as Product[];
 
   if (search) {
     const term = search.trim().toLowerCase();
+
     products = products.filter((product) => {
       const productName = product.productName?.toLowerCase() ?? "";
       const productCode = product.productCode?.toLowerCase() ?? "";
@@ -238,7 +256,9 @@ export async function getProducts({
   }
 
   if (category && category !== "All") {
-    products = products.filter((product) => product.category === category);
+    products = products.filter(
+      (product) => product.category === category
+    );
   }
 
   return products.sort((a, b) =>
@@ -534,7 +554,7 @@ export async function createSale(
       (sum, item) =>
         sum +
         (Number(item.rate) - Number(item.purchasePrice)) *
-        Number(item.quantity),
+          Number(item.quantity),
       0,
     );
     const profit =
@@ -622,7 +642,7 @@ export async function createSale(
       (sum, item) =>
         sum +
         (item.rate - (productSnapshotMap[item.productId]?.purchasePrice ?? 0)) *
-        item.quantity,
+          item.quantity,
       0,
     ),
     createdAt,
@@ -776,7 +796,7 @@ export async function getPayments(
 export async function getDashboardStats(): Promise<DashboardStats> {
   const [shops, products, sales, payments] = await Promise.all([
     getShops(),
-    getProducts({}),
+    getProducts(),
     getRecentSales(10000),
     getPayments(),
   ]);
@@ -941,8 +961,8 @@ export async function deleteSale(saleId: string): Promise<void> {
       const productRef = doc(productsCollection, itemData.productId);
       const productSnap = await transaction.get(productRef);
       if (productSnap.exists()) {
-        const currentStock = Number(productSnap.data().stockQuantity) || 0;
-        transaction.update(productRef, { stockQuantity: currentStock + itemData.quantity });
+         const currentStock = Number(productSnap.data().stockQuantity) || 0;
+         transaction.update(productRef, { stockQuantity: currentStock + itemData.quantity });
       }
       transaction.delete(itemDoc.ref);
     }
@@ -1004,9 +1024,9 @@ export async function updatePaymentData(
     const shopRef = doc(shopsCollection, paymentData.shopId);
     const shopSnap = await transaction.get(shopRef);
     if (shopSnap.exists()) {
-      const shopData = shopSnap.data() as Shop;
-      const newBalance = Math.max(0, (shopData.outstandingBalance ?? 0) - amountDiff);
-      transaction.update(shopRef, { outstandingBalance: newBalance });
+       const shopData = shopSnap.data() as Shop;
+       const newBalance = Math.max(0, (shopData.outstandingBalance ?? 0) - amountDiff);
+       transaction.update(shopRef, { outstandingBalance: newBalance });
     }
 
     transaction.update(paymentRef, updates);
@@ -1038,8 +1058,8 @@ export async function updateSaleData(
     const shopSnap = await transaction.get(shopRef);
     let shopBalance = 0;
     if (shopSnap.exists()) {
-      shopBalance = (shopSnap.data() as Shop).outstandingBalance ?? 0;
-      shopBalance = Math.max(0, shopBalance - oldSale.grandTotal);
+       shopBalance = (shopSnap.data() as Shop).outstandingBalance ?? 0;
+       shopBalance = Math.max(0, shopBalance - oldSale.grandTotal);
     }
 
     const oldItemsSnap = await getDocs(query(saleItemsCollection, where('saleId', '==', saleId)));
@@ -1048,23 +1068,23 @@ export async function updateSaleData(
       const productRef = doc(productsCollection, itemData.productId);
       const productSnap = await transaction.get(productRef);
       if (productSnap.exists()) {
-        const currentStock = Number(productSnap.data().stockQuantity) || 0;
-        transaction.update(productRef, { stockQuantity: currentStock + itemData.quantity });
+         const currentStock = Number(productSnap.data().stockQuantity) || 0;
+         transaction.update(productRef, { stockQuantity: currentStock + itemData.quantity });
       }
       transaction.delete(itemDoc.ref);
     }
 
     shopBalance = shopBalance + updates.grandTotal;
     if (shopSnap.exists()) {
-      transaction.update(shopRef, { outstandingBalance: shopBalance });
+       transaction.update(shopRef, { outstandingBalance: shopBalance });
     }
 
     for (const newItem of updates.items) {
       const productRef = doc(productsCollection, newItem.productId);
       const productSnap = await transaction.get(productRef);
       if (productSnap.exists()) {
-        const currentStock = Number(productSnap.data().stockQuantity) || 0;
-        transaction.update(productRef, { stockQuantity: Math.max(0, currentStock - newItem.quantity) });
+         const currentStock = Number(productSnap.data().stockQuantity) || 0;
+         transaction.update(productRef, { stockQuantity: Math.max(0, currentStock - newItem.quantity) });
       }
       const newItemId = generateId();
       const newItemRef = doc(saleItemsCollection, newItemId);
@@ -1090,63 +1110,6 @@ export async function updateSaleData(
       transaction.update(lDoc.ref, { debit: updates.grandTotal });
     }
   });
-}
-
-export async function createPayment(
-  shopId: string,
-  amount: number,
-  paymentMethod: PaymentMethod,
-  notes: string,
-  paymentDate: string,
-): Promise<Payment> {
-  const id = generateId();
-  const receiptNumber = generateInvoiceNumber(); // or create your own receipt number
-  const createdAt = paymentDate || toISOString();
-
-  const payment: Payment = {
-    id,
-    shopId,
-    receiptNumber,
-    amount,
-    paymentMethod,
-    notes,
-    paymentDate,
-    createdAt,
-  };
-
-  await runTransaction(db, async (transaction) => {
-    const shopRef = doc(shopsCollection, shopId);
-    const shopSnap = await transaction.get(shopRef);
-
-    if (!shopSnap.exists()) {
-      throw new Error("Shop not found");
-    }
-
-    const shop = shopSnap.data() as Shop;
-    const newBalance = Math.max(
-      0,
-      (shop.outstandingBalance ?? 0) - amount
-    );
-
-    transaction.set(doc(paymentsCollection, id), payment);
-
-    transaction.update(shopRef, {
-      outstandingBalance: newBalance,
-    });
-
-    transaction.set(doc(ledgersCollection, generateId()), {
-      id: generateId(),
-      shopId,
-      transactionType: "payment",
-      referenceNumber: receiptNumber,
-      debit: 0,
-      credit: amount,
-      balance: newBalance,
-      createdAt,
-    });
-  });
-
-  return payment;
 }
 
 export async function getLedgerEntries(

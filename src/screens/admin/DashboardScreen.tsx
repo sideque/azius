@@ -135,7 +135,7 @@ export function DashboardScreen() {
       <Text style={[styles.section, { color: colors.text }]}>
         Monthly Sales
       </Text>
-      {/* <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
         <LineChart
           data={{ labels: chartLabels, datasets: [{ data: salesData.length ? salesData : [0] }] }}
           width={Math.max(screenWidth, chartLabels.length * 60)}
@@ -151,12 +151,12 @@ export function DashboardScreen() {
           bezier
           style={styles.chart}
         />
-      </ScrollView> */}
+      </ScrollView>
 
       <Text style={[styles.section, { color: colors.text }]}>
         Monthly Profit
       </Text>
-      {/* <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
         <LineChart
           data={{ labels: chartLabels, datasets: [{ data: profitData.length ? profitData : [0] }] }}
           width={Math.max(screenWidth, chartLabels.length * 60)}
@@ -172,7 +172,7 @@ export function DashboardScreen() {
           bezier
           style={styles.chart}
         />
-      </ScrollView> */}
+      </ScrollView>
 
       <Text style={[styles.section, { color: colors.text }]}>
         Top Selling Products

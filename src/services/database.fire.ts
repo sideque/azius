@@ -1111,3 +1111,26 @@ export async function updateSaleData(
     }
   });
 }
+
+export async function getLedgerEntries(
+  shopId?: string,
+  startDate?: string,
+  endDate?: string,
+): Promise<LedgerEntry[]> {
+  const snapshot = await getDocs(ledgersCollection);
+  let entries = snapshot.docs.map(mapDoc<LedgerEntry>);
+
+  if (shopId) {
+    entries = entries.filter((entry) => entry.shopId === shopId);
+  }
+
+  if (startDate) {
+    entries = entries.filter((entry) => entry.createdAt >= startDate);
+  }
+
+  if (endDate) {
+    entries = entries.filter((entry) => entry.createdAt <= endDate);
+  }
+
+  return entries.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}

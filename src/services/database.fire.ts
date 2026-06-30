@@ -13,25 +13,9 @@ import {
   updateDoc,
   where,
 } from "firebase/firestore";
+
 import { db } from "../config/firebase";
-import {
-  CartItem,
-import {
-  addDoc,
-  collection,
-  deleteDoc,
-  doc,
-  getDoc,
-  getDocs,
-  limit,
-  orderBy,
-  query,
-  runTransaction,
-  setDoc,
-  updateDoc,
-  where,
-} from "firebase/firestore";
-import { db } from "../config/firebase";
+
 import {
   CartItem,
   DashboardStats,
@@ -46,6 +30,7 @@ import {
   Shop,
   User,
 } from "../types";
+
 import {
   generateId,
   generateInvoiceNumber,
@@ -246,15 +231,22 @@ export async function getProducts(
   search?: string,
   category?: string,
 ): Promise<Product[]> {
+
   const snapshot = await getDocs(productsCollection);
-  let products = snapshot.docs.map(mapDoc<Product>);
+
+  let products = snapshot.docs.map((doc) => ({
+    id: doc.id,
+    ...doc.data(),
+  })) as Product[];
 
   if (search) {
     const term = search.trim().toLowerCase();
+
     products = products.filter((product) => {
       const productName = product.productName?.toLowerCase() ?? "";
       const productCode = product.productCode?.toLowerCase() ?? "";
       const categoryName = product.category?.toLowerCase() ?? "";
+
       return (
         productName.includes(term) ||
         productCode.includes(term) ||
@@ -264,11 +256,13 @@ export async function getProducts(
   }
 
   if (category && category !== "All") {
-    products = products.filter((product) => product.category === category);
+    products = products.filter(
+      (product) => product.category === category
+    );
   }
 
   return products.sort((a, b) =>
-    (a.productName ?? "").localeCompare(b.productName ?? ""),
+    (a.productName ?? "").localeCompare(b.productName ?? "")
   );
 }
 

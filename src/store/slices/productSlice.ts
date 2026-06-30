@@ -20,12 +20,26 @@ const initialState: ProductState = {
   categoryFilter: "All",
 };
 
+// export const fetchProducts = createAsyncThunk(
+//   "products/fetchAll",
+//   async (_, { getState }) => {
+//     const state = getState() as { products: ProductState };
+//     return db.getProducts( state.products.search, state.products.categoryFilter);
+//   },
+// );
+
 export const fetchProducts = createAsyncThunk(
   "products/fetchAll",
   async (_, { getState }) => {
     const state = getState() as { products: ProductState };
-    return db.getProducts({ search: state.products.search, category: state.products.categoryFilter });
-  },
+
+    const products = await db.getProducts(
+      state.products.search,
+      state.products.categoryFilter
+    );
+
+    return products;
+  }
 );
 
 export const fetchCategories = createAsyncThunk(

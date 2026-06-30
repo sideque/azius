@@ -73,12 +73,22 @@ export const removeSale = createAsyncThunk(
 
 export const updateSale = createAsyncThunk(
   "sales/update",
-  async (params: { id: string, data: { items: any[], subtotal: number, discount: number, grandTotal: number, profit: number } }, { rejectWithValue }) => {
+  async (
+    {
+      id,
+      data,
+    }: {
+      id: string;
+      data: any;
+    },
+    { rejectWithValue }
+  ) => {
     try {
-      await db.updateSaleData(params.id, params.data);
-      return params.id;
-    } catch (e) {
-      return rejectWithValue(e instanceof Error ? e.message : "Failed to update sale");
+      await db.updateSaleData(id, data);
+      return true;
+
+    } catch (e: any) {
+      return rejectWithValue(e.message);
     }
   }
 );

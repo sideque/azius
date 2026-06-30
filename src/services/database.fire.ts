@@ -1041,74 +1041,165 @@ export async function updatePaymentData(
 export async function updateSaleData(
   saleId: string,
   updates: {
-    items: { productId: string; quantity: number; price: number; total: number }[];
+    items: {
+      productId: string;
+      quantity: number;
+      rate: number;
+      total: number;
+    }[];
     subtotal: number;
     discount: number;
     grandTotal: number;
     profit: number;
   }
 ): Promise<void> {
+
+  // ---------- ALL READS ----------
+  const saleRef = doc(salesCollection, saleId);
+  const saleSnap = await getDoc(saleRef);
+
+  if (!saleSnap.exists()) {
+    throw new Error("Sale not found");
+  }
+
+  const oldSale = saleSnap.data() as Sale;
+
+  const shopRef = doc(shopsCollection, oldSale.shopId);
+  const shopSnap = await getDoc(shopRef);
+
+  const oldItemsSnap = await getDocs(
+    query(
+      saleItemsCollection,
+      where("saleId", "==", saleId)
+    )
+  );
+
+  const ledgerSnap = await getDocs(
+    query(
+      ledgersCollection,
+      where("referenceNumber", "==", oldSale.invoiceNumber)
+    )
+  );
+
+  // Read ALL old products
+
+  const oldProducts = await Promise.all(
+    oldItemsSnap.docs.map(async (d) => {
+      const item = d.data() as SaleItem;
+      const ref = doc(productsCollection, item.productId);
+      const snap = await getDoc(ref);
+
+      return {
+        ref,
+        snap,
+        item,
+      };
+    })
+  );
+
+  // Read ALL new products
+
+  const newProducts = await Promise.all(
+    updates.items.map(async (item) => {
+      const ref = doc(productsCollection, item.productId);
+      const snap = await getDoc(ref);
+
+      return {
+        ref,
+        snap,
+        item,
+      };
+    })
+  );
+
+  // ---------- TRANSACTION ----------
+
   await runTransaction(db, async (transaction) => {
-    const saleRef = doc(salesCollection, saleId);
-    const saleSnap = await transaction.get(saleRef);
-    if (!saleSnap.exists()) throw new Error("Sale not found");
-    const oldSale = saleSnap.data() as Sale;
 
-    const shopRef = doc(shopsCollection, oldSale.shopId);
-    const shopSnap = await transaction.get(shopRef);
-    let shopBalance = 0;
-    if (shopSnap.exists()) {
-       shopBalance = (shopSnap.data() as Shop).outstandingBalance ?? 0;
-       shopBalance = Math.max(0, shopBalance - oldSale.grandTotal);
+    // Restore old stock
+
+    for (const old of oldProducts) {
+
+      if (!old.snap.exists()) continue;
+
+      const stock =
+        Number(old.snap.data().stockQuantity) || 0;
+
+      transaction.update(old.ref, {
+        stockQuantity: stock + old.item.quantity,
+      });
+
+      transaction.delete(
+        doc(saleItemsCollection, old.item.id)
+      );
     }
 
-    const oldItemsSnap = await getDocs(query(saleItemsCollection, where('saleId', '==', saleId)));
-    for (const itemDoc of oldItemsSnap.docs) {
-      const itemData = itemDoc.data() as SaleItem;
-      const productRef = doc(productsCollection, itemData.productId);
-      const productSnap = await transaction.get(productRef);
-      if (productSnap.exists()) {
-         const currentStock = Number(productSnap.data().stockQuantity) || 0;
-         transaction.update(productRef, { stockQuantity: currentStock + itemData.quantity });
+    // Deduct new stock
+
+    for (const p of newProducts) {
+
+      if (!p.snap.exists()) {
+        throw new Error("Product not found");
       }
-      transaction.delete(itemDoc.ref);
-    }
 
-    shopBalance = shopBalance + updates.grandTotal;
-    if (shopSnap.exists()) {
-       transaction.update(shopRef, { outstandingBalance: shopBalance });
-    }
+      const stock =
+        Number(p.snap.data().stockQuantity) || 0;
 
-    for (const newItem of updates.items) {
-      const productRef = doc(productsCollection, newItem.productId);
-      const productSnap = await transaction.get(productRef);
-      if (productSnap.exists()) {
-         const currentStock = Number(productSnap.data().stockQuantity) || 0;
-         transaction.update(productRef, { stockQuantity: Math.max(0, currentStock - newItem.quantity) });
+      if (stock < p.item.quantity) {
+        throw new Error("Insufficient stock");
       }
-      const newItemId = generateId();
-      const newItemRef = doc(saleItemsCollection, newItemId);
-      transaction.set(newItemRef, {
-        id: newItemId,
+
+      transaction.update(p.ref, {
+        stockQuantity: stock - p.item.quantity,
+      });
+
+      const newSaleItemRef = doc(saleItemsCollection);
+
+      transaction.set(newSaleItemRef, {
+        id: newSaleItemRef.id,
         saleId,
-        productId: newItem.productId,
-        quantity: newItem.quantity,
-        price: newItem.price,
-        total: newItem.total
+        productId: p.item.productId,
+        quantity: p.item.quantity,
+        rate: p.item.rate,
+        total: p.item.total,
       });
     }
+
+    // Update Sale
 
     transaction.update(saleRef, {
       subtotal: updates.subtotal,
       discount: updates.discount,
       grandTotal: updates.grandTotal,
-      profit: updates.profit
+      profit: updates.profit,
     });
 
-    const ledgerSnap = await getDocs(query(ledgersCollection, where('referenceNumber', '==', oldSale.invoiceNumber)));
-    for (const lDoc of ledgerSnap.docs) {
-      transaction.update(lDoc.ref, { debit: updates.grandTotal });
+    // Update Shop Balance
+
+    if (shopSnap.exists()) {
+
+      const shop = shopSnap.data() as Shop;
+
+      const newBalance =
+        (shop.outstandingBalance || 0)
+        - oldSale.grandTotal
+        + updates.grandTotal;
+
+      transaction.update(shopRef, {
+        outstandingBalance: newBalance,
+      });
     }
+
+    // Update Ledger
+
+    ledgerSnap.docs.forEach((docSnap) => {
+
+      transaction.update(docSnap.ref, {
+        debit: updates.grandTotal,
+      });
+
+    });
+
   });
 }
 

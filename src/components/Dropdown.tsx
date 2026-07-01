@@ -134,7 +134,9 @@ export function Dropdown({
 
               <FlatList
                 data={filteredOptions}
-                keyExtractor={(item) => item.value}
+                keyExtractor={(item, index) =>
+                  `${item.value || item.label}-${index}`
+                }
                 renderItem={({ item }) => (
                   <Pressable
                     style={[

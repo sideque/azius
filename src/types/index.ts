@@ -34,6 +34,7 @@ export interface Shop {
   address: string;
   creditLimit: number;
   outstandingBalance: number;
+  openingBalance?: number;
   notes: string;
   createdAt: string;
 }
@@ -47,6 +48,7 @@ export interface Supplier {
   notes: string;
   createdAt: string;
   outstandingBalance?: number;
+  openingBalance?: number;
 }
 
 export interface SupplierBillItem {
@@ -55,6 +57,7 @@ export interface SupplierBillItem {
   productName: string;
   quantity: number;
   purchasePrice: number;
+  sellingPrice: number;
   total: number;
 }
 

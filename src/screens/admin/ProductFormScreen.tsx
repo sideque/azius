@@ -7,12 +7,7 @@ import {
   Dropdown,
   useToast,
 } from "../../components";
-import {
-  createOrUpdateSupplierBill,
-  getProductById,
-  getProducts,
-  getSuppliers,
-} from "../../services/database";
+import { getProductById, getProducts } from "../../services/database";
 import { useAppDispatch } from "../../store/hooks";
 import {
   addProduct,
@@ -21,7 +16,6 @@ import {
 } from "../../store/slices/productSlice";
 import { useTheme } from "../../theme/ThemeContext";
 import { validateProduct } from "../../utils/validation";
-import { generateId, toISOString } from "../../utils/formatters";
 import { AdminDrawerParamList } from "../../navigation/types";
 
 export function ProductFormScreen() {
@@ -41,16 +35,11 @@ export function ProductFormScreen() {
     sellingPrice: "",
     stockQuantity: "",
     unit: "",
-    supplierId: "",
-    supplierName: "",
     description: "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [unitOptions, setUnitOptions] = useState<
-    { label: string; value: string }[]
-  >([]);
-  const [supplierOptions, setSupplierOptions] = useState<
     { label: string; value: string }[]
   >([]);
 
@@ -63,8 +52,6 @@ export function ProductFormScreen() {
       sellingPrice: "",
       stockQuantity: "",
       unit: "",
-      supplierId: "",
-      supplierName: "",
       description: "",
     };
 
@@ -74,7 +61,6 @@ export function ProductFormScreen() {
     const loadUnits = async () => {
       try {
         const products = await getProducts();
-        const suppliers = await getSuppliers();
         const defaultUnits = [
           "kg",
           "pack",
@@ -96,16 +82,9 @@ export function ProductFormScreen() {
         );
         const options = units.map((unit) => ({ label: unit, value: unit }));
         setUnitOptions(options);
-        setSupplierOptions(
-          suppliers.map((supplier) => ({
-            label: supplier.supplierName,
-            value: supplier.id,
-          })),
-        );
       } catch (error) {
-        console.warn("Failed to load product units or suppliers", error);
+        console.warn("Failed to load product units", error);
         setUnitOptions([]);
-        setSupplierOptions([]);
       }
     };
 
@@ -121,8 +100,6 @@ export function ProductFormScreen() {
             sellingPrice: String(p.sellingPrice),
             stockQuantity: String(p.stockQuantity),
             unit: p.unit,
-            supplierId: p.supplierId ?? "",
-            supplierName: p.supplierName ?? "",
             description: p.description,
           });
       });
@@ -133,7 +110,7 @@ export function ProductFormScreen() {
     setForm((f) => ({ ...f, [key]: value }));
 
   const handleSave = async () => {
-    const validation = validateProduct(form, !isEdit);
+    const validation = validateProduct(form, false);
     setErrors(validation.errors);
     if (!validation.isValid) return;
 
@@ -146,8 +123,6 @@ export function ProductFormScreen() {
       sellingPrice: parseFloat(form.sellingPrice),
       stockQuantity: parseFloat(form.stockQuantity),
       unit: form.unit.trim(),
-      supplierId: form.supplierId || undefined,
-      supplierName: form.supplierName || undefined,
       description: form.description.trim(),
     };
 
@@ -156,27 +131,8 @@ export function ProductFormScreen() {
         await dispatch(editProduct({ id: productId, product: data }));
         showToast("Product updated");
       } else {
-        const created = await dispatch(addProduct(data)).unwrap();
+        await dispatch(addProduct(data)).unwrap();
         showToast("Product created");
-
-        if (data.supplierId) {
-          await createOrUpdateSupplierBill(
-            data.supplierId,
-            data.supplierName ?? "",
-            [
-              {
-                id: generateId(),
-                productId: created.id,
-                productName: data.productName,
-                quantity: data.stockQuantity,
-                purchasePrice: data.sellingPrice,
-                total: data.stockQuantity * data.sellingPrice,
-              },
-            ],
-            toISOString(new Date()),
-            `Added ${data.stockQuantity} ${data.unit} of ${data.productName}`,
-          );
-        }
       }
       navigation.navigate("Products" as never);
     } catch (error) {
@@ -227,7 +183,7 @@ export function ProductFormScreen() {
         error={errors.sellingPrice}
       />
       <CustomInput
-        label="Stock Quantity"
+        label="Opening Quantity"
         value={form.stockQuantity}
         onChangeText={(v) => update("stockQuantity", v)}
         keyboardType="decimal-pad"
@@ -240,34 +196,13 @@ export function ProductFormScreen() {
         onChange={(value) => update("unit", value)}
         placeholder="Select unit"
       />
-      <Dropdown
-        label="Supplier Ledger"
-        options={supplierOptions}
-        value={form.supplierId}
-        onChange={(value) => {
-          const supplier = supplierOptions.find((item) => item.value === value);
-          update("supplierId", value);
-          update("supplierName", supplier?.label ?? "");
-        }}
-        placeholder="Select supplier"
-      />
-      {errors.supplierId ? (
-        <Text style={[styles.errorText, { color: colors.error }]}>
-          {errors.supplierId}
-        </Text>
-      ) : null}
+
       <CustomInput
         label="Description"
         value={form.description}
         onChangeText={(v) => update("description", v)}
         multiline
         numberOfLines={3}
-      />
-      <CustomButton
-        title="Back to Products"
-        onPress={() => navigation.navigate("Products" as never)}
-        variant="secondary"
-        style={{ marginBottom: 12 }}
       />
       <CustomButton
         title={isEdit ? "Update Product" : "Create Product"}
@@ -282,6 +217,12 @@ export function ProductFormScreen() {
           style={{ marginTop: 12 }}
         />
       )}
+      <CustomButton
+        title="Back to Products"
+        onPress={() => navigation.navigate("Products" as never)}
+        variant="secondary"
+        style={{ marginTop: 12 }}
+      />
     </ScrollView>
   );
 }

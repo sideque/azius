@@ -26,14 +26,16 @@ export function SupplierFormScreen() {
   const supplierId = route.params?.supplierId;
   const isEdit = !!supplierId;
 
-  const [form, setForm] = useState({
+  const emptyForm = {
     supplierName: "",
     contactName: "",
     phoneNumber: "",
     address: "",
     notes: "",
     openingBalance: "",
-  });
+  };
+
+  const [form, setForm] = useState(emptyForm);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
 
@@ -50,6 +52,9 @@ export function SupplierFormScreen() {
             openingBalance: String(supplier.outstandingBalance ?? ""),
           });
       });
+    } else {
+      setForm(emptyForm);
+      setErrors({});
     }
   }, [supplierId]);
 
@@ -62,13 +67,15 @@ export function SupplierFormScreen() {
     if (!validation.isValid) return;
 
     setLoading(true);
+    const startingBalance = parseFloat(form.openingBalance) || 0;
     const data = {
       supplierName: form.supplierName.trim(),
       contactName: form.contactName.trim(),
       phoneNumber: form.phoneNumber.trim(),
       address: form.address.trim(),
       notes: form.notes.trim(),
-      outstandingBalance: parseFloat(form.openingBalance) || 0,
+      outstandingBalance: startingBalance,
+      openingBalance: startingBalance,
     };
 
     try {
@@ -79,7 +86,8 @@ export function SupplierFormScreen() {
         await dispatch(addSupplier(data));
         showToast("Supplier created");
       }
-      navigation.goBack();
+      //   navigation.goBack();
+      navigation.navigate("Suppliers" as never);
     } catch {
       showToast("Failed to save supplier", "error");
     } finally {
@@ -138,12 +146,6 @@ export function SupplierFormScreen() {
         numberOfLines={3}
       />
       <CustomButton
-        title="Back to Suppliers"
-        onPress={() => navigation.navigate("Suppliers" as never)}
-        variant="secondary"
-        style={{ marginBottom: 12 }}
-      />
-      <CustomButton
         title={isEdit ? "Update Supplier" : "Create Supplier"}
         onPress={handleSave}
         loading={loading}
@@ -156,6 +158,12 @@ export function SupplierFormScreen() {
           style={{ marginTop: 12 }}
         />
       )}
+      <CustomButton
+        title="Back to Suppliers"
+        onPress={() => navigation.navigate("Suppliers" as never)}
+        variant="secondary"
+        style={{ marginTop: 12 }}
+      />
     </ScrollView>
   );
 }

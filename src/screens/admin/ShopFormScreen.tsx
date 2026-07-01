@@ -56,13 +56,15 @@ export function ShopFormScreen() {
     if (!validation.isValid) return;
 
     setLoading(true);
+    const startingBalance = parseFloat(form.openingBalance) || 0;
     const data = {
       shopName: form.shopName.trim(),
       ownerName: form.ownerName.trim(),
       phoneNumber: form.phoneNumber.trim(),
       address: form.address.trim(),
       creditLimit: parseFloat(form.creditLimit),
-      outstandingBalance: parseFloat(form.openingBalance) || 0,
+      outstandingBalance: startingBalance,
+      openingBalance: startingBalance,
       notes: form.notes.trim(),
     };
 
@@ -141,12 +143,6 @@ export function ShopFormScreen() {
         numberOfLines={3}
       />
       <CustomButton
-        title="Back to Shops"
-        onPress={() => navigation.navigate("Shops" as never)}
-        variant="secondary"
-        style={{ marginBottom: 12 }}
-      />
-      <CustomButton
         title={isEdit ? "Update Shop" : "Create Shop"}
         onPress={handleSave}
         loading={loading}
@@ -159,6 +155,12 @@ export function ShopFormScreen() {
           style={{ marginTop: 12 }}
         />
       )}
+      <CustomButton
+        title="Back to Shops"
+        onPress={() => navigation.navigate("Shops" as never)}
+        variant="secondary"
+        style={{ marginTop: 12 }}
+      />
     </ScrollView>
   );
 }

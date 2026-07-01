@@ -452,7 +452,7 @@ export async function getShopById(id: string): Promise<Shop | null> {
 }
 
 export async function createShop(
-  shop: Omit<Shop, "id" | "outstandingBalance" | "createdAt">,
+  shop: Omit<Shop, "id" | "createdAt">,
 ): Promise<Shop> {
   const id = generateId();
   const createdAt = toISOString();
@@ -465,6 +465,7 @@ export async function createShop(
     address: shop.address,
     creditLimit: shop.creditLimit,
     outstandingBalance,
+    openingBalance: shop.openingBalance ?? outstandingBalance,
     notes: shop.notes,
     createdAt,
   });
@@ -482,6 +483,10 @@ export async function updateShop(
   if (shop.address !== undefined) payload.address = shop.address;
   if (shop.creditLimit !== undefined) payload.creditLimit = shop.creditLimit;
   if (shop.notes !== undefined) payload.notes = shop.notes;
+  if (shop.openingBalance !== undefined)
+    payload.openingBalance = shop.openingBalance;
+  if (shop.outstandingBalance !== undefined)
+    payload.outstandingBalance = shop.outstandingBalance;
   if (Object.keys(payload).length === 0) return;
   await updateDoc(doc(shopsCollection, id), payload);
 }
@@ -529,6 +534,7 @@ export async function createSupplier(
     ...supplier,
     createdAt,
     outstandingBalance,
+    openingBalance: supplier.openingBalance ?? outstandingBalance,
   });
   return { ...supplier, id, createdAt, outstandingBalance };
 }
@@ -546,6 +552,8 @@ export async function updateSupplier(
     payload.phoneNumber = supplier.phoneNumber;
   if (supplier.address !== undefined) payload.address = supplier.address;
   if (supplier.notes !== undefined) payload.notes = supplier.notes;
+  if (supplier.openingBalance !== undefined)
+    payload.openingBalance = supplier.openingBalance;
   if (supplier.outstandingBalance !== undefined)
     payload.outstandingBalance = supplier.outstandingBalance;
   if (Object.keys(payload).length === 0) return;
@@ -650,13 +658,8 @@ export async function createOrUpdateSupplierBill(
 
   await runTransaction(db, async (transaction) => {
     const billRef = doc(supplierBillsCollection, existingBill.id);
-    transaction.update(billRef, {
-      items: updatedItems,
-      totalAmount: updatedTotalAmount,
-      notes: noteText,
-    });
-
     const supplierRef = doc(suppliersCollection, supplierId);
+
     const supplierSnap = await transaction.get(supplierRef);
     if (!supplierSnap.exists()) throw new Error("Supplier not found");
 
@@ -664,6 +667,12 @@ export async function createOrUpdateSupplierBill(
     const currentBalance = supplierData.outstandingBalance ?? 0;
     const newBalance =
       currentBalance + (updatedTotalAmount - existingBill.totalAmount);
+
+    transaction.update(billRef, {
+      items: updatedItems,
+      totalAmount: updatedTotalAmount,
+      notes: noteText,
+    });
     transaction.update(supplierRef, { outstandingBalance: newBalance });
   });
 
@@ -694,6 +703,13 @@ export async function getSupplierBills(
   }
 
   return bills.sort((a, b) => b.billDate.localeCompare(a.billDate));
+}
+
+export async function getSupplierBill(
+  billId: string,
+): Promise<SupplierPurchaseBill | null> {
+  const billSnap = await getDoc(doc(supplierBillsCollection, billId));
+  return billSnap.exists() ? mapDoc<SupplierPurchaseBill>(billSnap) : null;
 }
 
 export async function updateSupplierBillData(

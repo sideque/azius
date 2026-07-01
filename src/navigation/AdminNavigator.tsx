@@ -10,13 +10,14 @@ import { SupplierListScreen } from "../screens/admin/SupplierListScreen";
 import { SupplierFormScreen } from "../screens/admin/SupplierFormScreen";
 import { SupplierReportsScreen } from "../screens/admin/SupplierReportsScreen";
 import { SupplierPaymentsScreen } from "../screens/admin/SupplierPaymentsScreen";
-import { ReportsScreen } from "../screens/admin/ReportsScreen";
+import { SupplierBillingScreen } from "../screens/admin/SupplierBillingScreen";
 import { NotificationsScreen } from "../screens/admin/NotificationsScreen";
 import { SettingsScreen } from "../screens/admin/SettingsScreen";
 import { EditPaymentScreen } from "../screens/admin/EditPaymentScreen";
 import { EditSaleScreen } from "../screens/admin/EditSaleScreen";
 import { CustomDrawerContent } from "./CustomDrawerContent";
 import { useTheme } from "../theme/ThemeContext";
+import { ReportsScreen } from "../screens/admin/ReportsScreen";
 
 const Drawer = createDrawerNavigator<AdminDrawerParamList>();
 
@@ -77,6 +78,11 @@ export function AdminNavigator() {
         name="SupplierPayments"
         component={SupplierPaymentsScreen}
         options={{ title: "Supplier Payments" }}
+      />
+      <Drawer.Screen
+        name="SupplierBilling"
+        component={SupplierBillingScreen}
+        options={{ title: "Supplier Billing" }}
       />
       <Drawer.Screen
         name="Reports"

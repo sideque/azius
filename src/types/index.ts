@@ -1,4 +1,4 @@
-export type UserRole = 'admin' | 'sales';
+export type UserRole = "admin" | "sales";
 
 export interface User {
   id: string;
@@ -19,6 +19,8 @@ export interface Product {
   stockQuantity: number;
   unit: string;
   description: string;
+  supplierId?: string;
+  supplierName?: string;
   createdAt: string;
   /** Optional searchable concatenated keywords for client‑side fallback */
   searchKeywords?: string;
@@ -34,6 +36,53 @@ export interface Shop {
   outstandingBalance: number;
   notes: string;
   createdAt: string;
+}
+
+export interface Supplier {
+  id: string;
+  supplierName: string;
+  contactName: string;
+  phoneNumber: string;
+  address: string;
+  notes: string;
+  createdAt: string;
+  outstandingBalance?: number;
+}
+
+export interface SupplierBillItem {
+  id: string;
+  productId: string;
+  productName: string;
+  quantity: number;
+  purchasePrice: number;
+  total: number;
+}
+
+export interface SupplierPurchaseBill {
+  id: string;
+  supplierId: string;
+  supplierName: string;
+  billNumber: string;
+  billDate: string;
+  notes: string;
+  totalAmount: number;
+  items: SupplierBillItem[];
+  createdAt: string;
+}
+
+export interface SupplierPayment {
+  id: string;
+  supplierId: string;
+  amount: number;
+  paymentMethod: PaymentMethod;
+  notes: string;
+  paymentDate: string;
+  createdAt: string;
+  receiptNumber: string;
+}
+
+export interface SupplierPaymentWithSupplier extends SupplierPayment {
+  supplierName: string;
 }
 
 export interface Sale {
@@ -56,7 +105,7 @@ export interface SaleItem {
   total: number;
 }
 
-export type PaymentMethod = 'Cash' | 'UPI' | 'Bank Transfer';
+export type PaymentMethod = "Cash" | "UPI" | "Bank Transfer";
 
 export interface Payment {
   id: string;
@@ -69,7 +118,7 @@ export interface Payment {
   receiptNumber?: string;
 }
 
-export type TransactionType = 'sale' | 'payment';
+export type TransactionType = "sale" | "payment";
 
 export interface LedgerEntry {
   id: string;
@@ -108,7 +157,7 @@ export interface DashboardStats {
 
 export interface NotificationItem {
   id: string;
-  type: 'low_stock' | 'outstanding' | 'payment_due';
+  type: "low_stock" | "outstanding" | "payment_due";
   title: string;
   message: string;
   createdAt: string;
@@ -116,7 +165,7 @@ export interface NotificationItem {
 }
 
 export interface ReportFilter {
-  period: 'daily' | 'monthly' | 'yearly' | 'custom';
+  period: "daily" | "monthly" | "yearly" | "custom";
   startDate?: string;
   endDate?: string;
   shopId?: string;

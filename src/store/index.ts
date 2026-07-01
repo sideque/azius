@@ -1,18 +1,20 @@
-import { configureStore } from '@reduxjs/toolkit';
-import authReducer from './slices/authSlice';
-import productReducer from './slices/productSlice';
-import shopReducer from './slices/shopSlice';
-import salesReducer from './slices/salesSlice';
-import paymentReducer from './slices/paymentSlice';
-import ledgerReducer from './slices/ledgerSlice';
-import reportReducer from './slices/reportSlice';
-import settingsReducer from './slices/settingsSlice';
+import { configureStore } from "@reduxjs/toolkit";
+import authReducer from "./slices/authSlice";
+import productReducer from "./slices/productSlice";
+import shopReducer from "./slices/shopSlice";
+import supplierReducer from "./slices/supplierSlice";
+import salesReducer from "./slices/salesSlice";
+import paymentReducer from "./slices/paymentSlice";
+import ledgerReducer from "./slices/ledgerSlice";
+import reportReducer from "./slices/reportSlice";
+import settingsReducer from "./slices/settingsSlice";
 
 export const store = configureStore({
   reducer: {
     auth: authReducer,
     products: productReducer,
     shops: shopReducer,
+    suppliers: supplierReducer,
     sales: salesReducer,
     payments: paymentReducer,
     ledger: ledgerReducer,

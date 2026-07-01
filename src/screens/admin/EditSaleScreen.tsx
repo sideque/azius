@@ -103,7 +103,10 @@ export function EditSaleScreen() {
 
     if (updateSale.fulfilled.match(result)) {
       showToast("Sale updated successfully");
-      navigation.goBack();
+      // navigation.goBack();
+      navigation.navigate("Reports", {
+        initialTab: "Ledger",
+      });
     } else {
       showToast((result.payload as string) || "Failed to update", "error");
     }

@@ -28,21 +28,30 @@ import {
   SaleWithDetails,
   PaymentWithShop,
   Shop,
+  Supplier,
+  SupplierPayment,
+  SupplierPaymentWithSupplier,
+  SupplierPurchaseBill,
+  SupplierBillItem,
   User,
 } from "../types";
 
 import {
   generateId,
   generateInvoiceNumber,
+  generateReceiptNumber,
   toISOString,
 } from "../utils/formatters";
 
 const usersCollection = collection(db, "users");
 const productsCollection = collection(db, "products");
 const shopsCollection = collection(db, "shops");
+const suppliersCollection = collection(db, "suppliers");
 const salesCollection = collection(db, "sales");
 const saleItemsCollection = collection(db, "sale_items");
 const paymentsCollection = collection(db, "payments");
+const supplierPaymentsCollection = collection(db, "supplier_payments");
+const supplierBillsCollection = collection(db, "supplier_bills");
 const ledgersCollection = collection(db, "ledgers");
 const cartsCollection = collection(db, "carts");
 
@@ -231,7 +240,6 @@ export async function getProducts(
   search?: string,
   category?: string,
 ): Promise<Product[]> {
-
   const snapshot = await getDocs(productsCollection);
 
   let products = snapshot.docs.map((doc) => ({
@@ -256,13 +264,11 @@ export async function getProducts(
   }
 
   if (category && category !== "All") {
-    products = products.filter(
-      (product) => product.category === category
-    );
+    products = products.filter((product) => product.category === category);
   }
 
   return products.sort((a, b) =>
-    (a.productName ?? "").localeCompare(b.productName ?? "")
+    (a.productName ?? "").localeCompare(b.productName ?? ""),
   );
 }
 
@@ -325,6 +331,9 @@ export async function updateProduct(
   if (product.stockQuantity !== undefined)
     payload.stockQuantity = product.stockQuantity;
   if (product.unit !== undefined) payload.unit = product.unit;
+  if (product.supplierId !== undefined) payload.supplierId = product.supplierId;
+  if (product.supplierName !== undefined)
+    payload.supplierName = product.supplierName;
   if (product.description !== undefined)
     payload.description = product.description;
 
@@ -447,6 +456,7 @@ export async function createShop(
 ): Promise<Shop> {
   const id = generateId();
   const createdAt = toISOString();
+  const outstandingBalance = shop.outstandingBalance ?? 0;
   await setDoc(doc(shopsCollection, id), {
     id,
     shopName: shop.shopName,
@@ -454,11 +464,11 @@ export async function createShop(
     phoneNumber: shop.phoneNumber,
     address: shop.address,
     creditLimit: shop.creditLimit,
-    outstandingBalance: 0,
+    outstandingBalance,
     notes: shop.notes,
     createdAt,
   });
-  return { ...shop, id, outstandingBalance: 0, createdAt };
+  return { ...shop, id, outstandingBalance, createdAt };
 }
 
 export async function updateShop(
@@ -478,6 +488,403 @@ export async function updateShop(
 
 export async function deleteShop(id: string): Promise<void> {
   await deleteDoc(doc(shopsCollection, id));
+}
+
+export async function getSuppliers(search?: string): Promise<Supplier[]> {
+  const snapshot = await getDocs(suppliersCollection);
+  let suppliers = snapshot.docs.map(mapDoc<Supplier>);
+
+  if (search) {
+    const term = search.trim().toLowerCase();
+    suppliers = suppliers.filter((supplier) => {
+      const supplierName = supplier.supplierName?.toLowerCase() ?? "";
+      const contactName = supplier.contactName?.toLowerCase() ?? "";
+      const phoneNumber = supplier.phoneNumber?.toLowerCase() ?? "";
+      return (
+        supplierName.includes(term) ||
+        contactName.includes(term) ||
+        phoneNumber.includes(term)
+      );
+    });
+  }
+
+  return suppliers.sort((a, b) =>
+    (a.supplierName ?? "").localeCompare(b.supplierName ?? ""),
+  );
+}
+
+export async function getSupplierById(id: string): Promise<Supplier | null> {
+  const snapshot = await getDoc(doc(suppliersCollection, id));
+  return snapshot.exists() ? mapDoc<Supplier>(snapshot) : null;
+}
+
+export async function createSupplier(
+  supplier: Omit<Supplier, "id" | "createdAt">,
+): Promise<Supplier> {
+  const id = generateId();
+  const createdAt = toISOString();
+  const outstandingBalance = supplier.outstandingBalance ?? 0;
+  await setDoc(doc(suppliersCollection, id), {
+    id,
+    ...supplier,
+    createdAt,
+    outstandingBalance,
+  });
+  return { ...supplier, id, createdAt, outstandingBalance };
+}
+
+export async function updateSupplier(
+  id: string,
+  supplier: Partial<Supplier>,
+): Promise<void> {
+  const payload: Partial<Supplier> = {};
+  if (supplier.supplierName !== undefined)
+    payload.supplierName = supplier.supplierName;
+  if (supplier.contactName !== undefined)
+    payload.contactName = supplier.contactName;
+  if (supplier.phoneNumber !== undefined)
+    payload.phoneNumber = supplier.phoneNumber;
+  if (supplier.address !== undefined) payload.address = supplier.address;
+  if (supplier.notes !== undefined) payload.notes = supplier.notes;
+  if (supplier.outstandingBalance !== undefined)
+    payload.outstandingBalance = supplier.outstandingBalance;
+  if (Object.keys(payload).length === 0) return;
+  await updateDoc(doc(suppliersCollection, id), payload);
+}
+
+export async function deleteSupplier(id: string): Promise<void> {
+  await deleteDoc(doc(suppliersCollection, id));
+}
+
+export async function createSupplierBill(
+  supplierId: string,
+  supplierName: string,
+  items: SupplierBillItem[],
+  billDate: string,
+  notes: string,
+): Promise<SupplierPurchaseBill> {
+  const id = generateId();
+  const billNumber = `BILL-${Date.now()}`;
+  const createdAt = toISOString();
+  const totalAmount = items.reduce((sum, item) => sum + item.total, 0);
+
+  await runTransaction(db, async (transaction) => {
+    const supplierRef = doc(suppliersCollection, supplierId);
+    const supplierSnap = await transaction.get(supplierRef);
+    if (!supplierSnap.exists()) throw new Error("Supplier not found");
+
+    const supplierData = supplierSnap.data() as Supplier;
+    const currentBalance = supplierData.outstandingBalance ?? 0;
+    const newBalance = currentBalance + totalAmount;
+
+    transaction.set(doc(supplierBillsCollection, id), {
+      id,
+      supplierId,
+      supplierName,
+      billNumber,
+      billDate,
+      notes,
+      totalAmount,
+      items,
+      createdAt,
+    });
+    transaction.update(supplierRef, { outstandingBalance: newBalance });
+  });
+
+  return {
+    id,
+    supplierId,
+    supplierName,
+    billNumber,
+    billDate,
+    notes,
+    totalAmount,
+    items,
+    createdAt,
+  };
+}
+
+export async function createOrUpdateSupplierBill(
+  supplierId: string,
+  supplierName: string,
+  items: SupplierBillItem[],
+  billDate: string,
+  notes: string,
+): Promise<SupplierPurchaseBill> {
+  const normalizedDay = billDate.split("T")[0];
+  const existingBills = await getSupplierBills(supplierId);
+  const existingBill = existingBills.find(
+    (bill) => bill.billDate.split("T")[0] === normalizedDay,
+  );
+
+  if (!existingBill) {
+    return createSupplierBill(supplierId, supplierName, items, billDate, notes);
+  }
+
+  const updatedItemsMap = new Map(
+    existingBill.items.map((item) => [item.productId, { ...item }]),
+  );
+  items.forEach((item) => {
+    const existingItem = updatedItemsMap.get(item.productId);
+    if (existingItem) {
+      const combinedQuantity = existingItem.quantity + item.quantity;
+      const combinedTotal = existingItem.total + item.total;
+      existingItem.quantity = combinedQuantity;
+      existingItem.total = combinedTotal;
+      existingItem.purchasePrice =
+        combinedQuantity > 0
+          ? combinedTotal / combinedQuantity
+          : item.purchasePrice;
+      updatedItemsMap.set(item.productId, existingItem);
+    } else {
+      updatedItemsMap.set(item.productId, { ...item });
+    }
+  });
+
+  const updatedItems = Array.from(updatedItemsMap.values());
+  const updatedTotalAmount = updatedItems.reduce(
+    (sum, item) => sum + item.total,
+    0,
+  );
+  const noteText = [existingBill.notes, notes].filter(Boolean).join(" | ");
+
+  await runTransaction(db, async (transaction) => {
+    const billRef = doc(supplierBillsCollection, existingBill.id);
+    transaction.update(billRef, {
+      items: updatedItems,
+      totalAmount: updatedTotalAmount,
+      notes: noteText,
+    });
+
+    const supplierRef = doc(suppliersCollection, supplierId);
+    const supplierSnap = await transaction.get(supplierRef);
+    if (!supplierSnap.exists()) throw new Error("Supplier not found");
+
+    const supplierData = supplierSnap.data() as Supplier;
+    const currentBalance = supplierData.outstandingBalance ?? 0;
+    const newBalance =
+      currentBalance + (updatedTotalAmount - existingBill.totalAmount);
+    transaction.update(supplierRef, { outstandingBalance: newBalance });
+  });
+
+  return {
+    ...existingBill,
+    items: updatedItems,
+    totalAmount: updatedTotalAmount,
+    notes: noteText,
+  };
+}
+
+export async function getSupplierBills(
+  supplierId?: string,
+  startDate?: string,
+  endDate?: string,
+): Promise<SupplierPurchaseBill[]> {
+  const snapshot = await getDocs(supplierBillsCollection);
+  let bills = snapshot.docs.map(mapDoc<SupplierPurchaseBill>);
+
+  if (supplierId) {
+    bills = bills.filter((bill) => bill.supplierId === supplierId);
+  }
+  if (startDate) {
+    bills = bills.filter((bill) => bill.billDate >= startDate);
+  }
+  if (endDate) {
+    bills = bills.filter((bill) => bill.billDate <= endDate);
+  }
+
+  return bills.sort((a, b) => b.billDate.localeCompare(a.billDate));
+}
+
+export async function updateSupplierBillData(
+  billId: string,
+  updates: {
+    items?: SupplierBillItem[];
+    notes?: string;
+    billDate?: string;
+    totalAmount?: number;
+  },
+): Promise<void> {
+  await runTransaction(db, async (transaction) => {
+    const billRef = doc(supplierBillsCollection, billId);
+    const billSnap = await transaction.get(billRef);
+    if (!billSnap.exists()) throw new Error("Bill not found");
+
+    const billData = billSnap.data() as SupplierPurchaseBill;
+    const oldTotal = billData.totalAmount;
+    const newTotal = updates.totalAmount ?? oldTotal;
+    const delta = newTotal - oldTotal;
+
+    const supplierRef = doc(suppliersCollection, billData.supplierId);
+    const supplierSnap = await transaction.get(supplierRef);
+    if (!supplierSnap.exists()) throw new Error("Supplier not found");
+
+    const supplierData = supplierSnap.data() as Supplier;
+    const currentBalance = supplierData.outstandingBalance ?? 0;
+    const newBalance = Math.max(0, currentBalance + delta);
+
+    transaction.update(billRef, {
+      ...(updates.items !== undefined ? { items: updates.items } : {}),
+      ...(updates.notes !== undefined ? { notes: updates.notes } : {}),
+      ...(updates.billDate !== undefined ? { billDate: updates.billDate } : {}),
+      ...(updates.totalAmount !== undefined
+        ? { totalAmount: updates.totalAmount }
+        : {}),
+    });
+    transaction.update(supplierRef, { outstandingBalance: newBalance });
+  });
+}
+
+export async function getSupplierPayments(
+  supplierId?: string,
+  startDate?: string,
+  endDate?: string,
+): Promise<SupplierPaymentWithSupplier[]> {
+  const snapshot = await getDocs(supplierPaymentsCollection);
+  let payments = snapshot.docs.map(mapDoc<SupplierPayment>);
+
+  if (supplierId) {
+    payments = payments.filter((payment) => payment.supplierId === supplierId);
+  }
+  if (startDate) {
+    payments = payments.filter((payment) => payment.paymentDate >= startDate);
+  }
+  if (endDate) {
+    payments = payments.filter((payment) => payment.paymentDate <= endDate);
+  }
+
+  const sorted = payments.sort((a, b) =>
+    b.paymentDate.localeCompare(a.paymentDate),
+  );
+  return Promise.all(
+    sorted.map(async (payment) => ({
+      ...payment,
+      supplierName:
+        (await getSupplierById(payment.supplierId))?.supplierName ??
+        "Unknown Supplier",
+    })),
+  );
+}
+
+export async function createSupplierPayment(
+  supplierId: string,
+  supplierName: string,
+  amount: number,
+  paymentMethod: PaymentMethod,
+  notes: string,
+  paymentDate: string,
+): Promise<SupplierPaymentWithSupplier> {
+  const id = generateId();
+  const receiptNumber = generateReceiptNumber();
+  const createdAt = toISOString();
+
+  await runTransaction(db, async (transaction) => {
+    const supplierRef = doc(suppliersCollection, supplierId);
+    const supplierSnap = await transaction.get(supplierRef);
+    if (!supplierSnap.exists()) throw new Error("Supplier not found");
+
+    const supplierData = supplierSnap.data() as Supplier;
+    const currentBalance = supplierData.outstandingBalance ?? 0;
+    const newBalance = Math.max(0, currentBalance - amount);
+
+    transaction.set(doc(supplierPaymentsCollection, id), {
+      id,
+      supplierId,
+      amount,
+      paymentMethod,
+      notes,
+      paymentDate,
+      createdAt,
+      receiptNumber,
+    });
+    transaction.update(supplierRef, { outstandingBalance: newBalance });
+  });
+
+  return {
+    id,
+    supplierId,
+    supplierName,
+    amount,
+    paymentMethod,
+    notes,
+    paymentDate,
+    createdAt,
+    receiptNumber,
+  };
+}
+
+export async function updateSupplierPaymentData(
+  paymentId: string,
+  updates: {
+    amount: number;
+    paymentMethod: PaymentMethod;
+    paymentDate: string;
+    notes?: string;
+  },
+): Promise<void> {
+  await runTransaction(db, async (transaction) => {
+    const paymentRef = doc(supplierPaymentsCollection, paymentId);
+    const paymentSnap = await transaction.get(paymentRef);
+    if (!paymentSnap.exists()) throw new Error("Payment not found");
+
+    const paymentData = paymentSnap.data() as SupplierPayment;
+    const amountDiff = updates.amount - paymentData.amount;
+
+    const supplierRef = doc(suppliersCollection, paymentData.supplierId);
+    const supplierSnap = await transaction.get(supplierRef);
+    if (!supplierSnap.exists()) throw new Error("Supplier not found");
+
+    const supplierData = supplierSnap.data() as Supplier;
+    const newBalance = Math.max(
+      0,
+      (supplierData.outstandingBalance ?? 0) - amountDiff,
+    );
+
+    transaction.update(paymentRef, updates);
+    transaction.update(supplierRef, { outstandingBalance: newBalance });
+  });
+}
+
+export async function deleteSupplierPayment(paymentId: string): Promise<void> {
+  await runTransaction(db, async (transaction) => {
+    const paymentRef = doc(supplierPaymentsCollection, paymentId);
+    const paymentSnap = await transaction.get(paymentRef);
+    if (!paymentSnap.exists()) throw new Error("Payment not found");
+
+    const paymentData = paymentSnap.data() as SupplierPayment;
+    const supplierRef = doc(suppliersCollection, paymentData.supplierId);
+    const supplierSnap = await transaction.get(supplierRef);
+    if (!supplierSnap.exists()) throw new Error("Supplier not found");
+
+    const supplierData = supplierSnap.data() as Supplier;
+    const newBalance =
+      (supplierData.outstandingBalance ?? 0) + paymentData.amount;
+
+    transaction.update(supplierRef, { outstandingBalance: newBalance });
+    transaction.delete(paymentRef);
+  });
+}
+
+export async function deleteSupplierBill(billId: string): Promise<void> {
+  await runTransaction(db, async (transaction) => {
+    const billRef = doc(supplierBillsCollection, billId);
+    const billSnap = await transaction.get(billRef);
+    if (!billSnap.exists()) throw new Error("Bill not found");
+
+    const billData = billSnap.data() as SupplierPurchaseBill;
+    const supplierRef = doc(suppliersCollection, billData.supplierId);
+    const supplierSnap = await transaction.get(supplierRef);
+    if (!supplierSnap.exists()) throw new Error("Supplier not found");
+
+    const supplierData = supplierSnap.data() as Supplier;
+    const newBalance = Math.max(
+      0,
+      (supplierData.outstandingBalance ?? 0) - billData.totalAmount,
+    );
+
+    transaction.update(supplierRef, { outstandingBalance: newBalance });
+    transaction.delete(billRef);
+  });
 }
 
 // Sales
@@ -652,7 +1059,9 @@ export async function createSale(
 }
 
 // Monthly Chart Data
-export async function getMonthlyChartData(): Promise<{ month: string; sales: number; profit: number }[]> {
+export async function getMonthlyChartData(): Promise<
+  { month: string; sales: number; profit: number }[]
+> {
   const snapshot = await getDocs(salesCollection);
   const salesDocs = snapshot.docs.map(mapDoc<Sale>);
 
@@ -674,44 +1083,60 @@ export async function getMonthlyChartData(): Promise<{ month: string; sales: num
 }
 
 // Recent Sales
-export async function getRecentSales(limitNum: number): Promise<SaleWithDetails[]> {
+export async function getRecentSales(
+  limitNum: number,
+): Promise<SaleWithDetails[]> {
   // Query the most recent sales ordered by creation timestamp
-  const recentSalesQuery = query(salesCollection, orderBy('createdAt', 'desc'), limit(limitNum));
+  const recentSalesQuery = query(
+    salesCollection,
+    orderBy("createdAt", "desc"),
+    limit(limitNum),
+  );
   const salesSnap = await getDocs(recentSalesQuery);
 
   const results: SaleWithDetails[] = [];
   for (const saleDoc of salesSnap.docs) {
     const sale = mapDoc<Sale>(saleDoc);
     // Fetch associated sale items
-    const itemsSnap = await getDocs(query(saleItemsCollection, where('saleId', '==', sale.id)));
+    const itemsSnap = await getDocs(
+      query(saleItemsCollection, where("saleId", "==", sale.id)),
+    );
     const rawItems = itemsSnap.docs.map(mapDoc<SaleItem>);
 
     // Enrich items with product name
     const enrichedItems = await Promise.all(
       rawItems.map(async (item) => {
         const product = await getProductById(item.productId);
-        return { ...item, productName: product?.productName ?? '' } as SaleItem & { productName: string };
+        return {
+          ...item,
+          productName: product?.productName ?? "",
+        } as SaleItem & { productName: string };
       }),
     );
 
     // Compute totals and profit
-    const subtotal = enrichedItems.reduce((sum, it) => sum + (it.total ?? 0), 0);
+    const subtotal = enrichedItems.reduce(
+      (sum, it) => sum + (it.total ?? 0),
+      0,
+    );
     const discount = (sale as any).discount ?? 0;
     const grandTotal = subtotal - discount;
     // Compute profit using purchase price from each product
-    const profit = await Promise.all(enrichedItems.map(async (it) => {
-      const prod = await getProductById(it.productId);
-      const purchasePrice = prod?.purchasePrice ?? 0;
-      return (it.rate - purchasePrice) * it.quantity;
-    })).then(vals => vals.reduce((sum, v) => sum + v, 0));
+    const profit = await Promise.all(
+      enrichedItems.map(async (it) => {
+        const prod = await getProductById(it.productId);
+        const purchasePrice = prod?.purchasePrice ?? 0;
+        return (it.rate - purchasePrice) * it.quantity;
+      }),
+    ).then((vals) => vals.reduce((sum, v) => sum + v, 0));
 
     // Resolve shop name
     const shop = await getShopById(sale.shopId);
-    const shopName = shop?.shopName ?? '';
+    const shopName = shop?.shopName ?? "";
 
     results.push({
       id: sale.id,
-      invoiceNumber: (sale as any).invoiceNumber ?? '',
+      invoiceNumber: (sale as any).invoiceNumber ?? "",
       shopId: sale.shopId,
       subtotal,
       discount,
@@ -725,18 +1150,15 @@ export async function getRecentSales(limitNum: number): Promise<SaleWithDetails[
   return results;
 }
 
-
 // Get Sales
 export async function getSales(
   startDate?: string,
   endDate?: string,
-  shopId?: string
+  shopId?: string,
 ): Promise<SaleWithDetails[]> {
-
   const sales = await getRecentSales(10000);
 
   return sales.filter((sale) => {
-
     let ok = true;
 
     if (shopId) {
@@ -753,33 +1175,31 @@ export async function getSales(
 
     return ok;
   });
-
 }
 
 export async function getPayments(
   startDate?: string,
   endDate?: string,
-  shopId?: string
+  shopId?: string,
 ): Promise<PaymentWithShop[]> {
-
   const snapshot = await getDocs(paymentsCollection);
 
   let payments = snapshot.docs.map(mapDoc<Payment>);
 
   if (shopId) {
-    payments = payments.filter(p => p.shopId === shopId);
+    payments = payments.filter((p) => p.shopId === shopId);
   }
 
   if (startDate) {
-    payments = payments.filter(p => p.createdAt >= startDate);
+    payments = payments.filter((p) => p.createdAt >= startDate);
   }
 
   if (endDate) {
-    payments = payments.filter(p => p.createdAt <= endDate);
+    payments = payments.filter((p) => p.createdAt <= endDate);
   }
 
   const sortedPayments = payments.sort((a, b) =>
-    b.createdAt.localeCompare(a.createdAt)
+    b.createdAt.localeCompare(a.createdAt),
   );
 
   return Promise.all(
@@ -789,8 +1209,69 @@ export async function getPayments(
         ...payment,
         shopName: shop?.shopName ?? "Unknown Shop",
       };
-    })
+    }),
   );
+}
+
+export async function createPayment(
+  shopId: string,
+  amount: number,
+  paymentMethod: PaymentMethod,
+  notes: string,
+  paymentDate: string,
+): Promise<PaymentWithShop> {
+  const paymentId = generateId();
+  const receiptNumber = generateReceiptNumber();
+  const createdAt = toISOString();
+
+  await runTransaction(db, async (transaction) => {
+    const shopRef = doc(shopsCollection, shopId);
+    const shopSnap = await transaction.get(shopRef);
+    if (!shopSnap.exists()) {
+      throw new Error("Shop not found");
+    }
+
+    const shopData = shopSnap.data() as Shop;
+    const currentBalance = Number(shopData.outstandingBalance) || 0;
+    const newBalance = currentBalance - amount;
+
+    transaction.set(doc(paymentsCollection, paymentId), {
+      id: paymentId,
+      shopId,
+      amount,
+      paymentMethod,
+      notes,
+      paymentDate,
+      createdAt,
+      receiptNumber,
+    });
+
+    transaction.update(shopRef, { outstandingBalance: newBalance });
+
+    transaction.set(doc(ledgersCollection, generateId()), {
+      id: generateId(),
+      shopId,
+      transactionType: "payment",
+      referenceNumber: receiptNumber,
+      debit: 0,
+      credit: amount,
+      balance: newBalance,
+      createdAt,
+    });
+  });
+
+  const shop = await getShopById(shopId);
+  return {
+    id: paymentId,
+    shopId,
+    amount,
+    paymentMethod,
+    notes,
+    paymentDate,
+    createdAt,
+    receiptNumber,
+    shopName: shop?.shopName ?? "Unknown Shop",
+  };
 }
 
 export async function getDashboardStats(): Promise<DashboardStats> {
@@ -833,12 +1314,12 @@ export async function getDashboardStats(): Promise<DashboardStats> {
 
   const outstandingBalance = shops.reduce(
     (sum, shop) => sum + (shop.outstandingBalance ?? 0),
-    0
+    0,
   );
 
   const paymentsCollected = payments.reduce(
     (sum, payment) => sum + payment.amount,
-    0
+    0,
   );
 
   return {
@@ -854,7 +1335,6 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     paymentsCollected,
   };
 }
-
 
 export async function getTopSellingProducts() {
   const snapshot = await getDocs(saleItemsCollection);
@@ -890,13 +1370,13 @@ export async function getTopSellingProducts() {
     .slice(0, 10);
 }
 
-
-export async function getRecentPayments(limitNum: number): Promise<PaymentWithShop[]> {
-
+export async function getRecentPayments(
+  limitNum: number,
+): Promise<PaymentWithShop[]> {
   const q = query(
     paymentsCollection,
     orderBy("createdAt", "desc"),
-    limit(limitNum)
+    limit(limitNum),
   );
 
   const snapshot = await getDocs(q);
@@ -910,33 +1390,42 @@ export async function getRecentPayments(limitNum: number): Promise<PaymentWithSh
         ...payment,
         shopName: shop?.shopName ?? "Unknown Shop",
       };
-    })
+    }),
   );
 }
 
-
-
-export async function getSaleByInvoiceNumber(invoiceNumber: string): Promise<SaleWithDetails | null> {
-  const q = query(salesCollection, where("invoiceNumber", "==", invoiceNumber), limit(1));
+export async function getSaleByInvoiceNumber(
+  invoiceNumber: string,
+): Promise<SaleWithDetails | null> {
+  const q = query(
+    salesCollection,
+    where("invoiceNumber", "==", invoiceNumber),
+    limit(1),
+  );
   const snap = await getDocs(q);
   if (snap.empty) return null;
   const sale = mapDoc<Sale>(snap.docs[0]);
 
-  const itemsSnap = await getDocs(query(saleItemsCollection, where('saleId', '==', sale.id)));
+  const itemsSnap = await getDocs(
+    query(saleItemsCollection, where("saleId", "==", sale.id)),
+  );
   const rawItems = itemsSnap.docs.map(mapDoc<SaleItem>);
 
   const enrichedItems = await Promise.all(
     rawItems.map(async (item) => {
       const product = await getProductById(item.productId);
-      return { ...item, productName: product?.productName ?? '' } as SaleItem & { productName: string };
+      return {
+        ...item,
+        productName: product?.productName ?? "",
+      } as SaleItem & { productName: string };
     }),
   );
 
   const shop = await getShopById(sale.shopId);
   return {
     ...sale,
-    shopName: shop?.shopName ?? '',
-    items: enrichedItems
+    shopName: shop?.shopName ?? "",
+    items: enrichedItems,
   };
 }
 
@@ -951,23 +1440,35 @@ export async function deleteSale(saleId: string): Promise<void> {
     const shopSnap = await transaction.get(shopRef);
     if (shopSnap.exists()) {
       const shopData = shopSnap.data() as Shop;
-      const newBalance = Math.max(0, (shopData.outstandingBalance ?? 0) - saleData.grandTotal);
+      const newBalance = Math.max(
+        0,
+        (shopData.outstandingBalance ?? 0) - saleData.grandTotal,
+      );
       transaction.update(shopRef, { outstandingBalance: newBalance });
     }
 
-    const itemsSnap = await getDocs(query(saleItemsCollection, where('saleId', '==', saleId)));
+    const itemsSnap = await getDocs(
+      query(saleItemsCollection, where("saleId", "==", saleId)),
+    );
     for (const itemDoc of itemsSnap.docs) {
       const itemData = itemDoc.data() as SaleItem;
       const productRef = doc(productsCollection, itemData.productId);
       const productSnap = await transaction.get(productRef);
       if (productSnap.exists()) {
-         const currentStock = Number(productSnap.data().stockQuantity) || 0;
-         transaction.update(productRef, { stockQuantity: currentStock + itemData.quantity });
+        const currentStock = Number(productSnap.data().stockQuantity) || 0;
+        transaction.update(productRef, {
+          stockQuantity: currentStock + itemData.quantity,
+        });
       }
       transaction.delete(itemDoc.ref);
     }
 
-    const ledgerSnap = await getDocs(query(ledgersCollection, where('referenceNumber', '==', saleData.invoiceNumber)));
+    const ledgerSnap = await getDocs(
+      query(
+        ledgersCollection,
+        where("referenceNumber", "==", saleData.invoiceNumber),
+      ),
+    );
     for (const lDoc of ledgerSnap.docs) {
       transaction.delete(lDoc.ref);
     }
@@ -976,13 +1477,21 @@ export async function deleteSale(saleId: string): Promise<void> {
   });
 }
 
-export async function getPaymentByReceiptNumber(receiptNumber: string): Promise<Payment & { shopName: string } | null> {
-  const q = query(paymentsCollection, where("receiptNumber", "==", receiptNumber), limit(1));
+export async function getPaymentByReceiptNumber(
+  receiptNumber: string,
+): Promise<(Payment & { shopName: string }) | null> {
+  const q = query(
+    paymentsCollection,
+    where("receiptNumber", "==", receiptNumber),
+    limit(1),
+  );
   const snap = await getDocs(q);
   if (snap.empty) return null;
   const payment = mapDoc<Payment>(snap.docs[0]);
   const shop = await getShopById(payment.shopId);
-  return { ...payment, shopName: shop?.shopName ?? '' } as Payment & { shopName: string };
+  return { ...payment, shopName: shop?.shopName ?? "" } as Payment & {
+    shopName: string;
+  };
 }
 
 export async function deletePayment(paymentId: string): Promise<void> {
@@ -990,17 +1499,25 @@ export async function deletePayment(paymentId: string): Promise<void> {
     const paymentRef = doc(paymentsCollection, paymentId);
     const paymentSnap = await transaction.get(paymentRef);
     if (!paymentSnap.exists()) throw new Error("Payment not found");
-    const paymentData = paymentSnap.data() as Payment & { receiptNumber: string };
+    const paymentData = paymentSnap.data() as Payment & {
+      receiptNumber: string;
+    };
 
     const shopRef = doc(shopsCollection, paymentData.shopId);
     const shopSnap = await transaction.get(shopRef);
     if (shopSnap.exists()) {
       const shopData = shopSnap.data() as Shop;
-      const newBalance = (shopData.outstandingBalance ?? 0) + paymentData.amount;
+      const newBalance =
+        (shopData.outstandingBalance ?? 0) + paymentData.amount;
       transaction.update(shopRef, { outstandingBalance: newBalance });
     }
 
-    const ledgerSnap = await getDocs(query(ledgersCollection, where('referenceNumber', '==', paymentData.receiptNumber || '')));
+    const ledgerSnap = await getDocs(
+      query(
+        ledgersCollection,
+        where("referenceNumber", "==", paymentData.receiptNumber || ""),
+      ),
+    );
     for (const lDoc of ledgerSnap.docs) {
       transaction.delete(lDoc.ref);
     }
@@ -1011,27 +1528,42 @@ export async function deletePayment(paymentId: string): Promise<void> {
 
 export async function updatePaymentData(
   paymentId: string,
-  updates: { amount: number; paymentMethod: PaymentMethod; paymentDate: string; notes?: string }
+  updates: {
+    amount: number;
+    paymentMethod: PaymentMethod;
+    paymentDate: string;
+    notes?: string;
+  },
 ): Promise<void> {
   await runTransaction(db, async (transaction) => {
     const paymentRef = doc(paymentsCollection, paymentId);
     const paymentSnap = await transaction.get(paymentRef);
     if (!paymentSnap.exists()) throw new Error("Payment not found");
-    const paymentData = paymentSnap.data() as Payment & { receiptNumber: string };
+    const paymentData = paymentSnap.data() as Payment & {
+      receiptNumber: string;
+    };
 
     const amountDiff = updates.amount - paymentData.amount;
 
     const shopRef = doc(shopsCollection, paymentData.shopId);
     const shopSnap = await transaction.get(shopRef);
     if (shopSnap.exists()) {
-       const shopData = shopSnap.data() as Shop;
-       const newBalance = Math.max(0, (shopData.outstandingBalance ?? 0) - amountDiff);
-       transaction.update(shopRef, { outstandingBalance: newBalance });
+      const shopData = shopSnap.data() as Shop;
+      const newBalance = Math.max(
+        0,
+        (shopData.outstandingBalance ?? 0) - amountDiff,
+      );
+      transaction.update(shopRef, { outstandingBalance: newBalance });
     }
 
     transaction.update(paymentRef, updates);
 
-    const ledgerSnap = await getDocs(query(ledgersCollection, where('referenceNumber', '==', paymentData.receiptNumber || '')));
+    const ledgerSnap = await getDocs(
+      query(
+        ledgersCollection,
+        where("referenceNumber", "==", paymentData.receiptNumber || ""),
+      ),
+    );
     for (const lDoc of ledgerSnap.docs) {
       transaction.update(lDoc.ref, { credit: updates.amount });
     }
@@ -1051,9 +1583,8 @@ export async function updateSaleData(
     discount: number;
     grandTotal: number;
     profit: number;
-  }
+  },
 ): Promise<void> {
-
   // ---------- ALL READS ----------
   const saleRef = doc(salesCollection, saleId);
   const saleSnap = await getDoc(saleRef);
@@ -1068,17 +1599,14 @@ export async function updateSaleData(
   const shopSnap = await getDoc(shopRef);
 
   const oldItemsSnap = await getDocs(
-    query(
-      saleItemsCollection,
-      where("saleId", "==", saleId)
-    )
+    query(saleItemsCollection, where("saleId", "==", saleId)),
   );
 
   const ledgerSnap = await getDocs(
     query(
       ledgersCollection,
-      where("referenceNumber", "==", oldSale.invoiceNumber)
-    )
+      where("referenceNumber", "==", oldSale.invoiceNumber),
+    ),
   );
 
   // Read ALL old products
@@ -1094,7 +1622,7 @@ export async function updateSaleData(
         snap,
         item,
       };
-    })
+    }),
   );
 
   // Read ALL new products
@@ -1109,41 +1637,34 @@ export async function updateSaleData(
         snap,
         item,
       };
-    })
+    }),
   );
 
   // ---------- TRANSACTION ----------
 
   await runTransaction(db, async (transaction) => {
-
     // Restore old stock
 
     for (const old of oldProducts) {
-
       if (!old.snap.exists()) continue;
 
-      const stock =
-        Number(old.snap.data().stockQuantity) || 0;
+      const stock = Number(old.snap.data().stockQuantity) || 0;
 
       transaction.update(old.ref, {
         stockQuantity: stock + old.item.quantity,
       });
 
-      transaction.delete(
-        doc(saleItemsCollection, old.item.id)
-      );
+      transaction.delete(doc(saleItemsCollection, old.item.id));
     }
 
     // Deduct new stock
 
     for (const p of newProducts) {
-
       if (!p.snap.exists()) {
         throw new Error("Product not found");
       }
 
-      const stock =
-        Number(p.snap.data().stockQuantity) || 0;
+      const stock = Number(p.snap.data().stockQuantity) || 0;
 
       if (stock < p.item.quantity) {
         throw new Error("Insufficient stock");
@@ -1177,13 +1698,12 @@ export async function updateSaleData(
     // Update Shop Balance
 
     if (shopSnap.exists()) {
-
       const shop = shopSnap.data() as Shop;
 
       const newBalance =
-        (shop.outstandingBalance || 0)
-        - oldSale.grandTotal
-        + updates.grandTotal;
+        (shop.outstandingBalance || 0) -
+        oldSale.grandTotal +
+        updates.grandTotal;
 
       transaction.update(shopRef, {
         outstandingBalance: newBalance,
@@ -1193,13 +1713,10 @@ export async function updateSaleData(
     // Update Ledger
 
     ledgerSnap.docs.forEach((docSnap) => {
-
       transaction.update(docSnap.ref, {
         debit: updates.grandTotal,
       });
-
     });
-
   });
 }
 

@@ -12,7 +12,14 @@ import {
 } from "react-native";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { BarChart } from "react-native-chart-kit";
-import { Dropdown, SummaryCard, Modal, CustomButton, InvoiceCard, PaymentCard } from "../../components";
+import {
+  Dropdown,
+  SummaryCard,
+  Modal,
+  CustomButton,
+  InvoiceCard,
+  PaymentCard,
+} from "../../components";
 import { useAppDispatch, useAppSelector } from "../../store/hooks";
 import {
   fetchPaymentReport,
@@ -22,7 +29,12 @@ import { fetchLedger } from "../../store/slices/ledgerSlice";
 import { fetchShops } from "../../store/slices/shopSlice";
 import { useTheme } from "../../theme/ThemeContext";
 import { formatCurrency } from "../../utils/formatters";
-import { ReportFilter, LedgerEntry, SaleWithDetails, Payment } from "../../types";
+import {
+  ReportFilter,
+  LedgerEntry,
+  SaleWithDetails,
+  Payment,
+} from "../../types";
 import { LedgerCard } from "../../components";
 import { removeSale } from "../../store/slices/salesSlice";
 import { removePayment } from "../../store/slices/paymentSlice";
@@ -39,6 +51,12 @@ export function ReportsScreen() {
   const { salesReport, paymentReport } = useAppSelector((s) => s.reports);
   const shops = useAppSelector((s) => s.shops.items);
   const ledgerEntries = useAppSelector((s) => s.ledger.entries);
+  const sortedLedgerEntries = React.useMemo(() => {
+    return [...ledgerEntries].sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    );
+  }, [ledgerEntries]);
   const [tab, setTab] = useState<Tab>("sales");
   const [period, setPeriod] = useState<ReportFilter["period"]>("monthly");
   const [shopId, setShopId] = useState("");
@@ -46,10 +64,11 @@ export function ReportsScreen() {
 
   // Ledger entry viewing state
   const [selectedEntry, setSelectedEntry] = useState<LedgerEntry | null>(null);
-  const [entryDetails, setEntryDetails] = useState<SaleWithDetails | (Payment & { shopName: string }) | null>(null);
+  const [entryDetails, setEntryDetails] = useState<
+    SaleWithDetails | (Payment & { shopName: string }) | null
+  >(null);
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
-
   // const load = useCallback(() => {
   //   dispatch(fetchShops());
   //   const filter: ReportFilter = { period, shopId: shopId || undefined };
@@ -101,7 +120,9 @@ export function ReportsScreen() {
         const details = await db.getSaleByInvoiceNumber(entry.referenceNumber);
         setEntryDetails(details);
       } else {
-        const details = await db.getPaymentByReceiptNumber(entry.referenceNumber);
+        const details = await db.getPaymentByReceiptNumber(
+          entry.referenceNumber,
+        );
         setEntryDetails(details);
       }
     } catch (e) {
@@ -116,10 +137,20 @@ export function ReportsScreen() {
     try {
       if (entry.transactionType === "sale") {
         const details = await db.getSaleByInvoiceNumber(entry.referenceNumber);
-        if (details) navigation.navigate("EditSale", { saleId: details.id, invoiceNumber: details.invoiceNumber });
+        if (details)
+          navigation.navigate("EditSale", {
+            saleId: details.id,
+            invoiceNumber: details.invoiceNumber,
+          });
       } else {
-        const details = await db.getPaymentByReceiptNumber(entry.referenceNumber);
-        if (details) navigation.navigate("EditPayment", { paymentId: details.id, receiptNumber: details.receiptNumber });
+        const details = await db.getPaymentByReceiptNumber(
+          entry.referenceNumber,
+        );
+        if (details)
+          navigation.navigate("EditPayment", {
+            paymentId: details.id,
+            receiptNumber: details.receiptNumber,
+          });
       }
     } catch (e) {
       Alert.alert("Error", "Could not load edit screen");
@@ -142,13 +173,17 @@ export function ReportsScreen() {
               let targetId = entryDetails?.id;
               // If we are deleting directly from the card and don't have details loaded yet
               if (!targetId || selectedEntry?.id !== entry.id) {
-                 if (entry.transactionType === "sale") {
-                   const details = await db.getSaleByInvoiceNumber(entry.referenceNumber);
-                   targetId = details?.id;
-                 } else {
-                   const details = await db.getPaymentByReceiptNumber(entry.referenceNumber);
-                   targetId = details?.id;
-                 }
+                if (entry.transactionType === "sale") {
+                  const details = await db.getSaleByInvoiceNumber(
+                    entry.referenceNumber,
+                  );
+                  targetId = details?.id;
+                } else {
+                  const details = await db.getPaymentByReceiptNumber(
+                    entry.referenceNumber,
+                  );
+                  targetId = details?.id;
+                }
               }
 
               if (!targetId) throw new Error("Could not find record to delete");
@@ -165,7 +200,7 @@ export function ReportsScreen() {
             }
           },
         },
-      ]
+      ],
     );
   };
 
@@ -311,34 +346,79 @@ export function ReportsScreen() {
               Select a shop to view ledger
             </Text>
           ) : (
-            ledgerEntries.map((entry) => (
-              <LedgerCard key={entry.id} entry={entry} onPress={() => handleLedgerPress(entry)} onEdit={() => handleEditEntry(entry)} onDelete={() => handleDeleteEntry(entry)} />
+            sortedLedgerEntries.map((entry) => (
+              <LedgerCard
+                key={entry.id}
+                entry={entry}
+                onPress={() => handleLedgerPress(entry)}
+                onEdit={() => handleEditEntry(entry)}
+                onDelete={() => handleDeleteEntry(entry)}
+              />
             ))
           )}
         </>
       )}
       {loading && (
-        <ActivityIndicator size="large" color={colors.primary} style={{ marginVertical: 20 }} />
+        <ActivityIndicator
+          size="large"
+          color={colors.primary}
+          style={{ marginVertical: 20 }}
+        />
       )}
       <View style={{ height: 24 }} />
 
-      <Modal visible={showDetailsModal} title={`${selectedEntry?.transactionType === 'sale' ? 'Sale' : 'Payment'} Details`} onClose={() => setShowDetailsModal(false)}>
+      <Modal
+        visible={showDetailsModal}
+        title={`${selectedEntry?.transactionType === "sale" ? "Sale" : "Payment"} Details`}
+        onClose={() => setShowDetailsModal(false)}
+      >
         {detailsLoading ? (
-          <ActivityIndicator size="large" color={colors.primary} style={{ marginVertical: 20 }} />
+          <ActivityIndicator
+            size="large"
+            color={colors.primary}
+            style={{ marginVertical: 20 }}
+          />
         ) : entryDetails ? (
           <View>
-            {selectedEntry?.transactionType === 'sale' ? (
+            {selectedEntry?.transactionType === "sale" ? (
               <InvoiceCard sale={entryDetails as SaleWithDetails} />
             ) : (
               <PaymentCard payment={entryDetails as any} />
             )}
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 16 }}>
-              <CustomButton title="Delete" onPress={() => handleDeleteEntry(selectedEntry)} style={{ backgroundColor: colors.error, flex: 1, marginRight: 8 }} />
-              <CustomButton title="Close" onPress={() => setShowDetailsModal(false)} variant="outline" style={{ flex: 1, marginLeft: 8 }} />
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "space-between",
+                marginTop: 16,
+              }}
+            >
+              <CustomButton
+                title="Delete"
+                onPress={() => handleDeleteEntry(selectedEntry)}
+                style={{
+                  backgroundColor: colors.error,
+                  flex: 1,
+                  marginRight: 8,
+                }}
+              />
+              <CustomButton
+                title="Close"
+                onPress={() => setShowDetailsModal(false)}
+                variant="outline"
+                style={{ flex: 1, marginLeft: 8 }}
+              />
             </View>
           </View>
         ) : (
-          <Text style={{ color: colors.textSecondary, textAlign: 'center', marginVertical: 20 }}>Details not found</Text>
+          <Text
+            style={{
+              color: colors.textSecondary,
+              textAlign: "center",
+              marginVertical: 20,
+            }}
+          >
+            Details not found
+          </Text>
         )}
       </Modal>
     </ScrollView>

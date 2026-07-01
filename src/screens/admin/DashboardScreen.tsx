@@ -41,12 +41,12 @@ export function DashboardScreen() {
   // }, [dispatch]);
   const load = useCallback(() => {
     console.log("🚀 DASHBOARD LOADING START");
-
     Promise.all([
       dispatch(fetchDashboard()),
       dispatch(fetchRecentSales()),
       dispatch(fetchRecentPayments()),
     ]);
+    console.log("Dashboard ending ");
   }, [dispatch]);
 
   useFocusEffect(
@@ -137,7 +137,10 @@ export function DashboardScreen() {
       </Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
         <LineChart
-          data={{ labels: chartLabels, datasets: [{ data: salesData.length ? salesData : [0] }] }}
+          data={{
+            labels: chartLabels,
+            datasets: [{ data: salesData.length ? salesData : [0] }],
+          }}
           width={Math.max(screenWidth, chartLabels.length * 60)}
           height={200}
           chartConfig={{
@@ -158,7 +161,10 @@ export function DashboardScreen() {
       </Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
         <LineChart
-          data={{ labels: chartLabels, datasets: [{ data: profitData.length ? profitData : [0] }] }}
+          data={{
+            labels: chartLabels,
+            datasets: [{ data: profitData.length ? profitData : [0] }],
+          }}
           width={Math.max(screenWidth, chartLabels.length * 60)}
           height={200}
           chartConfig={{

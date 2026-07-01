@@ -2,90 +2,95 @@ import React, { useEffect, useState } from "react";
 import { ScrollView, StyleSheet } from "react-native";
 import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
 import { CustomButton, CustomInput, useToast } from "../../components";
-import { getShopById } from "../../services/database";
+import {
+  createSupplier,
+  getSupplierById,
+  updateSupplier,
+} from "../../services/database";
 import { useAppDispatch } from "../../store/hooks";
-import { addShop, editShop, removeShop } from "../../store/slices/shopSlice";
+import {
+  addSupplier,
+  editSupplier,
+  removeSupplier,
+} from "../../store/slices/supplierSlice";
 import { useTheme } from "../../theme/ThemeContext";
-import { validateShop } from "../../utils/validation";
+import { validateSupplier } from "../../utils/validation";
 import { AdminDrawerParamList } from "../../navigation/types";
 
-export function ShopFormScreen() {
+export function SupplierFormScreen() {
   const { colors } = useTheme();
   const dispatch = useAppDispatch();
   const navigation = useNavigation();
   const { showToast } = useToast();
-  const route = useRoute<RouteProp<AdminDrawerParamList, "ShopForm">>();
-  const shopId = route.params?.shopId;
-  const isEdit = !!shopId;
+  const route = useRoute<RouteProp<AdminDrawerParamList, "SupplierForm">>();
+  const supplierId = route.params?.supplierId;
+  const isEdit = !!supplierId;
 
   const [form, setForm] = useState({
-    shopName: "",
-    ownerName: "",
+    supplierName: "",
+    contactName: "",
     phoneNumber: "",
     address: "",
-    creditLimit: "",
-    openingBalance: "",
     notes: "",
+    openingBalance: "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (shopId) {
-      getShopById(shopId).then((s) => {
-        if (s)
+    if (supplierId) {
+      getSupplierById(supplierId).then((supplier) => {
+        if (supplier)
           setForm({
-            shopName: s.shopName,
-            ownerName: s.ownerName,
-            phoneNumber: s.phoneNumber,
-            address: s.address,
-            creditLimit: String(s.creditLimit),
-            openingBalance: String(s.outstandingBalance ?? ""),
-            notes: s.notes,
+            supplierName: supplier.supplierName,
+            contactName: supplier.contactName,
+            phoneNumber: supplier.phoneNumber,
+            address: supplier.address,
+            notes: supplier.notes,
+            openingBalance: String(supplier.outstandingBalance ?? ""),
           });
       });
     }
-  }, [shopId]);
+  }, [supplierId]);
 
   const update = (key: string, value: string) =>
     setForm((f) => ({ ...f, [key]: value }));
 
   const handleSave = async () => {
-    const validation = validateShop(form);
+    const validation = validateSupplier(form);
     setErrors(validation.errors);
     if (!validation.isValid) return;
 
     setLoading(true);
     const data = {
-      shopName: form.shopName.trim(),
-      ownerName: form.ownerName.trim(),
+      supplierName: form.supplierName.trim(),
+      contactName: form.contactName.trim(),
       phoneNumber: form.phoneNumber.trim(),
       address: form.address.trim(),
-      creditLimit: parseFloat(form.creditLimit),
-      outstandingBalance: parseFloat(form.openingBalance) || 0,
       notes: form.notes.trim(),
+      outstandingBalance: parseFloat(form.openingBalance) || 0,
     };
 
     try {
-      if (isEdit && shopId) {
-        await dispatch(editShop({ id: shopId, shop: data }));
-        showToast("Shop updated");
+      if (isEdit && supplierId) {
+        await dispatch(editSupplier({ id: supplierId, supplier: data }));
+        showToast("Supplier updated");
       } else {
-        await dispatch(addShop(data));
-        showToast("Shop created");
+        await dispatch(addSupplier(data));
+        showToast("Supplier created");
       }
       navigation.goBack();
     } catch {
-      showToast("Failed to save shop", "error");
+      showToast("Failed to save supplier", "error");
     } finally {
       setLoading(false);
     }
   };
 
   const handleDelete = async () => {
-    if (shopId) {
-      await dispatch(removeShop(shopId));
-      showToast("Shop deleted");
+    if (supplierId) {
+      await dispatch(removeSupplier(supplierId));
+      showToast("Supplier deleted");
       navigation.goBack();
     }
   };
@@ -96,16 +101,15 @@ export function ShopFormScreen() {
       keyboardShouldPersistTaps="handled"
     >
       <CustomInput
-        label="Shop Name"
-        value={form.shopName}
-        onChangeText={(v) => update("shopName", v)}
-        error={errors.shopName}
+        label="Supplier Name"
+        value={form.supplierName}
+        onChangeText={(v) => update("supplierName", v)}
+        error={errors.supplierName}
       />
       <CustomInput
-        label="Owner Name"
-        value={form.ownerName}
-        onChangeText={(v) => update("ownerName", v)}
-        error={errors.ownerName}
+        label="Contact Name"
+        value={form.contactName}
+        onChangeText={(v) => update("contactName", v)}
       />
       <CustomInput
         label="Phone Number"
@@ -118,20 +122,13 @@ export function ShopFormScreen() {
         label="Address"
         value={form.address}
         onChangeText={(v) => update("address", v)}
-        error={errors.address}
-      />
-      <CustomInput
-        label="Credit Limit"
-        value={form.creditLimit}
-        onChangeText={(v) => update("creditLimit", v)}
-        keyboardType="decimal-pad"
-        error={errors.creditLimit}
       />
       <CustomInput
         label="Opening Balance"
         value={form.openingBalance}
         onChangeText={(v) => update("openingBalance", v)}
         keyboardType="decimal-pad"
+        error={errors.openingBalance}
       />
       <CustomInput
         label="Notes"
@@ -141,19 +138,19 @@ export function ShopFormScreen() {
         numberOfLines={3}
       />
       <CustomButton
-        title="Back to Shops"
-        onPress={() => navigation.navigate("Shops" as never)}
+        title="Back to Suppliers"
+        onPress={() => navigation.navigate("Suppliers" as never)}
         variant="secondary"
         style={{ marginBottom: 12 }}
       />
       <CustomButton
-        title={isEdit ? "Update Shop" : "Create Shop"}
+        title={isEdit ? "Update Supplier" : "Create Supplier"}
         onPress={handleSave}
         loading={loading}
       />
       {isEdit && (
         <CustomButton
-          title="Delete Shop"
+          title="Delete Supplier"
           onPress={handleDelete}
           variant="danger"
           style={{ marginTop: 12 }}

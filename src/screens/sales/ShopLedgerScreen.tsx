@@ -1,48 +1,75 @@
-import React, { useCallback, useState } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, View, Alert } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
-import { Dropdown, EmptyState, LedgerCard, LoadingComponent, Modal, CustomButton, InvoiceCard, PaymentCard } from '../../components';
-import { useAppDispatch, useAppSelector } from '../../store/hooks';
-import { fetchShops } from '../../store/slices/shopSlice';
-import { fetchLedger } from '../../store/slices/ledgerSlice';
-import { removeSale } from '../../store/slices/salesSlice';
-import { removePayment } from '../../store/slices/paymentSlice';
-import * as db from '../../services/database';
-import { useTheme } from '../../theme/ThemeContext';
-import { formatCurrency, formatDate, getDateRange } from '../../utils/formatters';
+import React, { useCallback, useState } from "react";
+import {
+  FlatList,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  Alert,
+} from "react-native";
+import { useFocusEffect } from "@react-navigation/native";
+import {
+  Dropdown,
+  EmptyState,
+  LedgerCard,
+  LoadingComponent,
+  Modal,
+  CustomButton,
+  InvoiceCard,
+  PaymentCard,
+} from "../../components";
+import { useAppDispatch, useAppSelector } from "../../store/hooks";
+import { fetchShops } from "../../store/slices/shopSlice";
+import { fetchLedger } from "../../store/slices/ledgerSlice";
+import { removeSale } from "../../store/slices/salesSlice";
+import { removePayment } from "../../store/slices/paymentSlice";
+import * as db from "../../services/database";
+import { useTheme } from "../../theme/ThemeContext";
+import {
+  formatCurrency,
+  formatDate,
+  getDateRange,
+} from "../../utils/formatters";
 
-import { LedgerEntry, SaleWithDetails, Payment } from '../../types';
+import { LedgerEntry, SaleWithDetails, Payment } from "../../types";
 
-type FilterPeriod = 'daily' | 'monthly' | 'custom';
+type FilterPeriod = "daily" | "monthly" | "custom";
 
 export function ShopLedgerScreen() {
   const { colors } = useTheme();
   const dispatch = useAppDispatch();
   const shops = useAppSelector((s) => s.shops.items);
   const { entries, selectedShop, loading } = useAppSelector((s) => s.ledger);
-  const [shopId, setShopId] = useState('');
-  const [period, setPeriod] = useState<FilterPeriod>('monthly');
+  const [shopId, setShopId] = useState("");
+  const [period, setPeriod] = useState<FilterPeriod>("monthly");
 
   // Ledger entry viewing state
   const [selectedEntry, setSelectedEntry] = useState<LedgerEntry | null>(null);
-  const [entryDetails, setEntryDetails] = useState<SaleWithDetails | (Payment & { shopName: string }) | null>(null);
+  const [entryDetails, setEntryDetails] = useState<
+    SaleWithDetails | (Payment & { shopName: string }) | null
+  >(null);
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
 
   const loadShops = useCallback(() => dispatch(fetchShops()), [dispatch]);
-  useFocusEffect(useCallback(() => { loadShops(); }, [loadShops]));
+  useFocusEffect(
+    useCallback(() => {
+      loadShops();
+    }, [loadShops]),
+  );
 
   const loadLedger = (id: string, p: FilterPeriod) => {
-    const filterPeriod = p === 'daily' ? 'daily' : p === 'monthly' ? 'monthly' : 'custom';
+    const filterPeriod =
+      p === "daily" ? "daily" : p === "monthly" ? "monthly" : "custom";
     const { startDate, endDate } = getDateRange(filterPeriod);
     dispatch(fetchLedger({ shopId: id, startDate, endDate }));
   };
 
   const shopOptions = shops.map((s) => ({ label: s.shopName, value: s.id }));
   const periodOptions = [
-    { label: 'Today', value: 'daily' },
-    { label: 'This Month', value: 'monthly' },
-    { label: 'All Time', value: 'custom' },
+    { label: "Today", value: "daily" },
+    { label: "This Month", value: "monthly" },
+    { label: "All Time", value: "custom" },
   ];
 
   const handleLedgerPress = async (entry: LedgerEntry) => {
@@ -55,7 +82,9 @@ export function ShopLedgerScreen() {
         const details = await db.getSaleByInvoiceNumber(entry.referenceNumber);
         setEntryDetails(details);
       } else {
-        const details = await db.getPaymentByReceiptNumber(entry.referenceNumber);
+        const details = await db.getPaymentByReceiptNumber(
+          entry.referenceNumber,
+        );
         setEntryDetails(details);
       }
     } catch (e) {
@@ -84,13 +113,17 @@ export function ShopLedgerScreen() {
               let targetId = entryDetails?.id;
               // If we are deleting directly from the card and don't have details loaded yet
               if (!targetId || selectedEntry?.id !== entry.id) {
-                 if (entry.transactionType === "sale") {
-                   const details = await db.getSaleByInvoiceNumber(entry.referenceNumber);
-                   targetId = details?.id;
-                 } else {
-                   const details = await db.getPaymentByReceiptNumber(entry.referenceNumber);
-                   targetId = details?.id;
-                 }
+                if (entry.transactionType === "sale") {
+                  const details = await db.getSaleByInvoiceNumber(
+                    entry.referenceNumber,
+                  );
+                  targetId = details?.id;
+                } else {
+                  const details = await db.getPaymentByReceiptNumber(
+                    entry.referenceNumber,
+                  );
+                  targetId = details?.id;
+                }
               }
 
               if (!targetId) throw new Error("Could not find record to delete");
@@ -107,20 +140,30 @@ export function ShopLedgerScreen() {
             }
           },
         },
-      ]
+      ],
     );
   };
 
-  const lastSale = entries.find((e) => e.transactionType === 'sale');
-  const lastPayment = entries.find((e) => e.transactionType === 'payment');
+  const lastSale = entries.find((e) => e.transactionType === "sale");
+  const lastPayment = entries.find((e) => e.transactionType === "payment");
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <Dropdown
+      {/* <Dropdown
         label="Select Shop"
         options={shopOptions}
         value={shopId}
         onChange={(v) => { setShopId(v); loadLedger(v, period); }}
+        placeholder="Choose a shop..."
+      /> */}
+      <Dropdown
+        label="Select Shop"
+        options={shopOptions}
+        value={shopId}
+        onChange={(v) => {
+          setShopId(v);
+          loadLedger(v, period);
+        }}
         placeholder="Choose a shop..."
       />
 
@@ -130,37 +173,95 @@ export function ShopLedgerScreen() {
             {periodOptions.map((opt) => (
               <Pressable
                 key={opt.value}
-                onPress={() => { setPeriod(opt.value as FilterPeriod); loadLedger(shopId, opt.value as FilterPeriod); }}
-                style={[styles.chip, { backgroundColor: period === opt.value ? colors.primary : colors.surface, borderColor: colors.border }]}
+                onPress={() => {
+                  setPeriod(opt.value as FilterPeriod);
+                  loadLedger(shopId, opt.value as FilterPeriod);
+                }}
+                style={[
+                  styles.chip,
+                  {
+                    backgroundColor:
+                      period === opt.value ? colors.primary : colors.surface,
+                    borderColor: colors.border,
+                  },
+                ]}
               >
-                <Text style={{ color: period === opt.value ? '#fff' : colors.text, fontSize: 12 }}>{opt.label}</Text>
+                <Text
+                  style={{
+                    color: period === opt.value ? "#fff" : colors.text,
+                    fontSize: 12,
+                  }}
+                >
+                  {opt.label}
+                </Text>
               </Pressable>
             ))}
           </View>
 
           {selectedShop && (
-            <View style={[styles.summary, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              <Text style={[styles.shopName, { color: colors.text }]}>{selectedShop.shopName}</Text>
-              <Text style={{ color: colors.textSecondary }}>{selectedShop.ownerName} • {selectedShop.phoneNumber}</Text>
-              <Text style={{ color: colors.textMuted, fontSize: 12, marginTop: 4 }}>{selectedShop.address}</Text>
+            <View
+              style={[
+                styles.summary,
+                { backgroundColor: colors.card, borderColor: colors.border },
+              ]}
+            >
+              <Text style={[styles.shopName, { color: colors.text }]}>
+                {selectedShop.shopName}
+              </Text>
+              <Text style={{ color: colors.textSecondary }}>
+                {selectedShop.ownerName} • {selectedShop.phoneNumber}
+              </Text>
+              <Text
+                style={{ color: colors.textMuted, fontSize: 12, marginTop: 4 }}
+              >
+                {selectedShop.address}
+              </Text>
               <View style={styles.statsRow}>
                 <View style={styles.stat}>
-                  <Text style={{ color: colors.textMuted, fontSize: 11 }}>OUTSTANDING</Text>
-                  <Text style={{ color: colors.warning, fontWeight: '700', fontSize: 16 }}>{formatCurrency(selectedShop.outstandingBalance)}</Text>
+                  <Text style={{ color: colors.textMuted, fontSize: 11 }}>
+                    OUTSTANDING
+                  </Text>
+                  <Text
+                    style={{
+                      color: colors.warning,
+                      fontWeight: "700",
+                      fontSize: 16,
+                    }}
+                  >
+                    {formatCurrency(selectedShop.outstandingBalance)}
+                  </Text>
                 </View>
                 <View style={styles.stat}>
-                  <Text style={{ color: colors.textMuted, fontSize: 11 }}>CREDIT LIMIT</Text>
-                  <Text style={{ color: colors.text, fontWeight: '700', fontSize: 16 }}>{formatCurrency(selectedShop.creditLimit)}</Text>
+                  <Text style={{ color: colors.textMuted, fontSize: 11 }}>
+                    CREDIT LIMIT
+                  </Text>
+                  <Text
+                    style={{
+                      color: colors.text,
+                      fontWeight: "700",
+                      fontSize: 16,
+                    }}
+                  >
+                    {formatCurrency(selectedShop.creditLimit)}
+                  </Text>
                 </View>
               </View>
               <View style={styles.statsRow}>
                 <View style={styles.stat}>
-                  <Text style={{ color: colors.textMuted, fontSize: 11 }}>LAST PURCHASE</Text>
-                  <Text style={{ color: colors.text, fontSize: 13 }}>{lastSale ? formatDate(lastSale.createdAt) : 'N/A'}</Text>
+                  <Text style={{ color: colors.textMuted, fontSize: 11 }}>
+                    LAST PURCHASE
+                  </Text>
+                  <Text style={{ color: colors.text, fontSize: 13 }}>
+                    {lastSale ? formatDate(lastSale.createdAt) : "N/A"}
+                  </Text>
                 </View>
                 <View style={styles.stat}>
-                  <Text style={{ color: colors.textMuted, fontSize: 11 }}>LAST PAYMENT</Text>
-                  <Text style={{ color: colors.text, fontSize: 13 }}>{lastPayment ? formatDate(lastPayment.createdAt) : 'N/A'}</Text>
+                  <Text style={{ color: colors.textMuted, fontSize: 11 }}>
+                    LAST PAYMENT
+                  </Text>
+                  <Text style={{ color: colors.text, fontSize: 13 }}>
+                    {lastPayment ? formatDate(lastPayment.createdAt) : "N/A"}
+                  </Text>
                 </View>
               </View>
             </View>
@@ -172,30 +273,64 @@ export function ShopLedgerScreen() {
             <FlatList
               data={entries}
               keyExtractor={(item) => item.id}
-              ListEmptyComponent={<EmptyState title="No Transactions" message="No ledger entries for this period" icon="📒" />}
-              renderItem={({ item }) => <LedgerCard entry={item} onPress={() => handleLedgerPress(item)} />}
+              ListEmptyComponent={
+                <EmptyState
+                  title="No Transactions"
+                  message="No ledger entries for this period"
+                  icon="📒"
+                />
+              }
+              renderItem={({ item }) => (
+                <LedgerCard
+                  entry={item}
+                  onPress={() => handleLedgerPress(item)}
+                />
+              )}
               style={{ flex: 1 }}
             />
           )}
         </>
       )}
 
-      <Modal visible={showDetailsModal} title={`${selectedEntry?.transactionType === 'sale' ? 'Sale' : 'Payment'} Details`} onClose={() => setShowDetailsModal(false)}>
+      <Modal
+        visible={showDetailsModal}
+        title={`${selectedEntry?.transactionType === "sale" ? "Sale" : "Payment"} Details`}
+        onClose={() => setShowDetailsModal(false)}
+      >
         {detailsLoading ? (
           <LoadingComponent />
         ) : entryDetails ? (
           <View>
-            {selectedEntry?.transactionType === 'sale' ? (
+            {selectedEntry?.transactionType === "sale" ? (
               <InvoiceCard sale={entryDetails as SaleWithDetails} />
             ) : (
               <PaymentCard payment={entryDetails as any} />
             )}
-            <View style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 16 }}>
-              <CustomButton title="Close" onPress={() => setShowDetailsModal(false)} variant="outline" style={{ flex: 1 }} />
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "center",
+                marginTop: 16,
+              }}
+            >
+              <CustomButton
+                title="Close"
+                onPress={() => setShowDetailsModal(false)}
+                variant="outline"
+                style={{ flex: 1 }}
+              />
             </View>
           </View>
         ) : (
-          <Text style={{ color: colors.textSecondary, textAlign: 'center', marginVertical: 20 }}>Details not found</Text>
+          <Text
+            style={{
+              color: colors.textSecondary,
+              textAlign: "center",
+              marginVertical: 20,
+            }}
+          >
+            Details not found
+          </Text>
         )}
       </Modal>
     </View>
@@ -204,10 +339,16 @@ export function ShopLedgerScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16 },
-  filters: { flexDirection: 'row', marginBottom: 12 },
-  chip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 16, marginRight: 8, borderWidth: 1 },
+  filters: { flexDirection: "row", marginBottom: 12 },
+  chip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 16,
+    marginRight: 8,
+    borderWidth: 1,
+  },
   summary: { padding: 16, borderRadius: 12, borderWidth: 1, marginBottom: 16 },
-  shopName: { fontSize: 18, fontWeight: '700' },
-  statsRow: { flexDirection: 'row', marginTop: 12 },
+  shopName: { fontSize: 18, fontWeight: "700" },
+  statsRow: { flexDirection: "row", marginTop: 12 },
   stat: { flex: 1 },
 });

@@ -12,6 +12,10 @@ export type AdminDrawerParamList = {
   ProductForm: { productId?: string };
   Shops: undefined;
   ShopForm: { shopId?: string };
+  Suppliers: undefined;
+  SupplierForm: { supplierId?: string };
+  SupplierReports: undefined;
+  SupplierPayments: undefined;
   Reports: undefined;
   Notifications: undefined;
   Settings: undefined;

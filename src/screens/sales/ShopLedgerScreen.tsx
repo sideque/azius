@@ -216,7 +216,7 @@ export function ShopLedgerScreen() {
               >
                 {selectedShop.address}
               </Text>
-              <View style={styles.statsRow}>
+              {/* <View style={styles.statsRow}>
                 <View style={styles.stat}>
                   <Text style={{ color: colors.textMuted, fontSize: 11 }}>
                     OUTSTANDING
@@ -231,6 +231,52 @@ export function ShopLedgerScreen() {
                     {formatCurrency(selectedShop.outstandingBalance)}
                   </Text>
                 </View>
+                <View style={styles.stat}>
+                  <Text style={{ color: colors.textMuted, fontSize: 11 }}>
+                    CREDIT LIMIT
+                  </Text>
+                  <Text
+                    style={{
+                      color: colors.text,
+                      fontWeight: "700",
+                      fontSize: 16,
+                    }}
+                  >
+                    {formatCurrency(selectedShop.creditLimit)}
+                  </Text>
+                </View>
+              </View> */}
+              <View style={styles.statsRow}>
+                <View style={styles.stat}>
+                  <Text style={{ color: colors.textMuted, fontSize: 11 }}>
+                    OPENING BALANCE
+                  </Text>
+                  <Text
+                    style={{
+                      color: colors.primary,
+                      fontWeight: "700",
+                      fontSize: 16,
+                    }}
+                  >
+                    {formatCurrency(selectedShop.openingBalance ?? 0)}
+                  </Text>
+                </View>
+
+                <View style={styles.stat}>
+                  <Text style={{ color: colors.textMuted, fontSize: 11 }}>
+                    OUTSTANDING
+                  </Text>
+                  <Text
+                    style={{
+                      color: colors.warning,
+                      fontWeight: "700",
+                      fontSize: 16,
+                    }}
+                  >
+                    {formatCurrency(selectedShop.outstandingBalance)}
+                  </Text>
+                </View>
+
                 <View style={styles.stat}>
                   <Text style={{ color: colors.textMuted, fontSize: 11 }}>
                     CREDIT LIMIT
@@ -345,18 +391,18 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
     borderRadius: 20,
     borderWidth: 1.5,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.02,
     shadowRadius: 2,
     elevation: 0.5,
   },
-  summary: { 
-    padding: 16, 
-    borderRadius: 14, 
-    borderWidth: 1, 
+  summary: {
+    padding: 16,
+    borderRadius: 14,
+    borderWidth: 1,
     marginBottom: 20,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
     shadowRadius: 6,

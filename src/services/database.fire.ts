@@ -1074,28 +1074,48 @@ export async function createSale(
   };
 }
 
-// Monthly Chart Data
+  
 export async function getMonthlyChartData(): Promise<
   { month: string; sales: number; profit: number }[]
 > {
-  const snapshot = await getDocs(salesCollection);
+  const startDate = new Date();
+  startDate.setMonth(startDate.getMonth() - 11); // Last 12 months
+
+  const q = query(
+    salesCollection,
+    where("createdAt", ">=", startDate.toISOString()),
+    orderBy("createdAt", "asc"),
+    limit(1000)
+  );
+
+  const snapshot = await getDocs(q);
   const salesDocs = snapshot.docs.map(mapDoc<Sale>);
 
   const monthMap = new Map<string, { sales: number; profit: number }>();
 
   for (const sale of salesDocs) {
     if (!sale.createdAt) continue;
-    const month = sale.createdAt.slice(0, 7); // e.g. "2024-06"
-    const existing = monthMap.get(month) ?? { sales: 0, profit: 0 };
+
+    const month = sale.createdAt.slice(0, 7); // YYYY-MM
+
+    const existing = monthMap.get(month) ?? {
+      sales: 0,
+      profit: 0,
+    };
+
     monthMap.set(month, {
-      sales: existing.sales + (Number(sale.grandTotal) || 0),
-      profit: existing.profit + (Number(sale.profit) || 0),
+      sales: existing.sales + Number(sale.grandTotal || 0),
+      profit: existing.profit + Number(sale.profit || 0),
     });
   }
 
-  return Array.from(monthMap.entries())
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([month, { sales, profit }]) => ({ month, sales, profit }));
+  return Array.from(monthMap.entries()).map(
+    ([month, { sales, profit }]) => ({
+      month,
+      sales,
+      profit,
+    }),
+  );
 }
 
 // Recent Sales
@@ -1172,7 +1192,7 @@ export async function getSales(
   endDate?: string,
   shopId?: string,
 ): Promise<SaleWithDetails[]> {
-  const sales = await getRecentSales(10000);
+  const sales = await getRecentSales(100);
 
   return sales.filter((sale) => {
     let ok = true;
@@ -1294,7 +1314,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
   const [shops, products, sales, payments] = await Promise.all([
     getShops(),
     getProducts(),
-    getRecentSales(10000),
+    getRecentSales(100), 
     getPayments(),
   ]);
 
@@ -1304,29 +1324,32 @@ export async function getDashboardStats(): Promise<DashboardStats> {
   const month = now.toISOString().slice(0, 7);
   const year = now.getFullYear().toString();
 
-  const salesToday = sales
-    .filter((s) => s.createdAt.startsWith(today))
-    .reduce((sum, s) => sum + s.grandTotal, 0);
+  let salesToday = 0;
+  let salesMonth = 0;
+  let salesYear = 0;
 
-  const salesMonth = sales
-    .filter((s) => s.createdAt.startsWith(month))
-    .reduce((sum, s) => sum + s.grandTotal, 0);
+  let profitToday = 0;
+  let profitMonth = 0;
+  let profitYear = 0;
 
-  const salesYear = sales
-    .filter((s) => s.createdAt.startsWith(year))
-    .reduce((sum, s) => sum + s.grandTotal, 0);
+  for (const sale of sales) {
+    const createdAt = sale.createdAt;
 
-  const profitToday = sales
-    .filter((s) => s.createdAt.startsWith(today))
-    .reduce((sum, s) => sum + s.profit, 0);
+    if (createdAt.startsWith(year)) {
+      salesYear += sale.grandTotal;
+      profitYear += sale.profit;
+    }
 
-  const profitMonth = sales
-    .filter((s) => s.createdAt.startsWith(month))
-    .reduce((sum, s) => sum + s.profit, 0);
+    if (createdAt.startsWith(month)) {
+      salesMonth += sale.grandTotal;
+      profitMonth += sale.profit;
+    }
 
-  const profitYear = sales
-    .filter((s) => s.createdAt.startsWith(year))
-    .reduce((sum, s) => sum + s.profit, 0);
+    if (createdAt.startsWith(today)) {
+      salesToday += sale.grandTotal;
+      profitToday += sale.profit;
+    }
+  }
 
   const outstandingBalance = shops.reduce(
     (sum, shop) => sum + (shop.outstandingBalance ?? 0),

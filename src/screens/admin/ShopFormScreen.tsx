@@ -8,7 +8,6 @@ import { addShop, editShop, removeShop } from "../../store/slices/shopSlice";
 import { useTheme } from "../../theme/ThemeContext";
 import { validateShop } from "../../utils/validation";
 import { AdminDrawerParamList } from "../../navigation/types";
-
 export function ShopFormScreen() {
   const { colors } = useTheme();
   const dispatch = useAppDispatch();

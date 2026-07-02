@@ -5,6 +5,7 @@ import { CustomButton, CustomInput, useToast } from "../../components";
 import {
   createSupplier,
   getSupplierById,
+  getSuppliers,
   updateSupplier,
 } from "../../services/database";
 import { useAppDispatch } from "../../store/hooks";
@@ -67,6 +68,24 @@ export function SupplierFormScreen() {
     if (!validation.isValid) return;
 
     setLoading(true);
+    const suppliers = await getSuppliers();
+
+    const duplicate = suppliers.find(
+      (supplier) =>
+        supplier.supplierName.trim().toLowerCase() ===
+          form.supplierName.trim().toLowerCase() &&
+        (!isEdit || supplier.id !== supplierId),
+    );
+
+    if (duplicate) {
+      setErrors((prev) => ({
+        ...prev,
+        supplierName: "Supplier already exists",
+      }));
+      showToast("Supplier already exists", "error");
+      setLoading(false);
+      return;
+    }
     const startingBalance = parseFloat(form.openingBalance) || 0;
     const data = {
       supplierName: form.supplierName.trim(),
@@ -88,6 +107,7 @@ export function SupplierFormScreen() {
       }
       //   navigation.goBack();
       navigation.navigate("Suppliers" as never);
+      setForm(emptyForm);
     } catch {
       showToast("Failed to save supplier", "error");
     } finally {
@@ -99,7 +119,7 @@ export function SupplierFormScreen() {
     if (supplierId) {
       await dispatch(removeSupplier(supplierId));
       showToast("Supplier deleted");
-      navigation.goBack();
+      navigation.navigate("Suppliers" as never);
     }
   };
 

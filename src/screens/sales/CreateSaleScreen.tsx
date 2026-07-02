@@ -36,7 +36,7 @@ import {
   updateCartQuantity,
 } from "../../store/slices/salesSlice";
 import { useTheme } from "../../theme/ThemeContext";
-import { formatCurrency } from "../../utils/formatters";
+import { formatCurrency, formatDateTime } from "../../utils/formatters";
 import { Product, SaleWithDetails } from "../../types";
 
 export function CreateSaleScreen() {
@@ -161,23 +161,57 @@ export function CreateSaleScreen() {
   }, [selectedShop?.phoneNumber]);
 
   const buildInvoiceMessage = (sale: SaleWithDetails) => {
-    const lines = [
-      `Invoice: ${sale.invoiceNumber}`,
-      `Shop: ${sale.shopName}`,
-      `Date: ${sale.createdAt}`,
-    ];
-    sale.items.forEach((item) => {
-      lines.push(
-        `${item.productName} x${item.quantity} = ${formatCurrency(item.total)}`,
-      );
-    });
-    lines.push(`Subtotal: ${formatCurrency(sale.subtotal)}`);
-    if (sale.discount > 0) {
-      lines.push(`Discount: -${formatCurrency(sale.discount)}`);
-    }
-    lines.push(`Grand Total: ${formatCurrency(sale.grandTotal)}`);
-    return lines.join("\n");
-  };
+  const items = sale.items
+    .map(
+      (item, index) => `
+${index + 1}. ${item.productName}
+   Qty  : ${item.quantity}
+   Rate : ${formatCurrency(item.rate)}
+   Total: ${formatCurrency(item.total)}
+`
+    )
+    .join("\n");
+
+  return `
+🧾 *SAIF MARKETING*
+━━━━━━━━━━━━━━━━━━━━━━
+
+📄 *SALES INVOICE*
+
+🆔 Invoice
+${sale.invoiceNumber}
+
+🏪 Customer
+${sale.shopName}
+
+📅 Date
+${formatDateTime(sale.createdAt)}
+
+━━━━━━━━━━━━━━━━━━━━━━
+
+📦 *ITEM DETAILS*
+
+${items}
+
+━━━━━━━━━━━━━━━━━━━━━━
+
+💰 *PAYMENT SUMMARY*
+
+Subtotal  : ${formatCurrency(sale.subtotal)}
+Discount  : ${formatCurrency(sale.discount)}
+━━━━━━━━━━━━━━━━━━━━━━
+
+🟢 *GRAND TOTAL*
+
+${formatCurrency(sale.grandTotal)}
+
+━━━━━━━━━━━━━━━━━━━━━━
+
+🙏 *Thank you for shopping with us.*
+
+⚡ Powered by *SAIF MARKETING*
+`;
+};
 
   const handleShareInvoice = async (sale: SaleWithDetails) => {
     const cleanedPhone = sharePhoneNumber.replace(/\D/g, "");

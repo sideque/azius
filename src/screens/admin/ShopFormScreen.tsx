@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { ScrollView, StyleSheet } from "react-native";
 import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
 import { CustomButton, CustomInput, useToast } from "../../components";
-import { getShopById } from "../../services/database";
+import { getShopById, getShops } from "../../services/database";
 import { useAppDispatch } from "../../store/hooks";
 import { addShop, editShop, removeShop } from "../../store/slices/shopSlice";
 import { useTheme } from "../../theme/ThemeContext";
@@ -53,42 +53,91 @@ export function ShopFormScreen() {
   const handleSave = async () => {
     const validation = validateShop(form);
     setErrors(validation.errors);
+
     if (!validation.isValid) return;
 
     setLoading(true);
-    const startingBalance = parseFloat(form.openingBalance) || 0;
-    const data = {
-      shopName: form.shopName.trim(),
-      ownerName: form.ownerName.trim(),
-      phoneNumber: form.phoneNumber.trim(),
-      address: form.address.trim(),
-      creditLimit: parseFloat(form.creditLimit),
-      outstandingBalance: startingBalance,
-      openingBalance: startingBalance,
-      notes: form.notes.trim(),
-    };
 
     try {
+      const existingShops = await getShops();
+
+      // Check duplicate shop name
+      const duplicateShop = existingShops.find(
+        (shop) =>
+          shop.shopName.trim().toLowerCase() ===
+            form.shopName.trim().toLowerCase() &&
+          (!isEdit || shop.id !== shopId),
+      );
+
+      if (duplicateShop) {
+        setErrors((prev) => ({
+          ...prev,
+          shopName: "Shop name already exists",
+        }));
+        showToast("Shop name already exists", "error");
+        setLoading(false);
+        return;
+      }
+
+      // Optional: Check duplicate phone number
+      const duplicatePhone = existingShops.find(
+        (shop) =>
+          shop.phoneNumber.trim() === form.phoneNumber.trim() &&
+          (!isEdit || shop.id !== shopId),
+      );
+
+      if (duplicatePhone) {
+        setErrors((prev) => ({
+          ...prev,
+          phoneNumber: "Phone number already exists",
+        }));
+        showToast("Phone number already exists", "error");
+        setLoading(false);
+        return;
+      }
+
+      const startingBalance = parseFloat(form.openingBalance) || 0;
+      const data = {
+        shopName: form.shopName.trim(),
+        ownerName: form.ownerName.trim(),
+        phoneNumber: form.phoneNumber.trim(),
+        address: form.address.trim(),
+        creditLimit: parseFloat(form.creditLimit),
+        outstandingBalance: startingBalance,
+        openingBalance: startingBalance,
+        notes: form.notes.trim(),
+      };
+
       if (isEdit && shopId) {
-        await dispatch(editShop({ id: shopId, shop: data }));
+        await dispatch(editShop({ id: shopId, shop: data })).unwrap();
         showToast("Shop updated");
       } else {
-        await dispatch(addShop(data));
+        await dispatch(addShop(data)).unwrap();
         showToast("Shop created");
       }
-      navigation.goBack();
-    } catch {
+
+      navigation.navigate("Shops" as never);
+      setForm({
+        shopName: "",
+        ownerName: "",
+        phoneNumber: "",
+        address: "",
+        creditLimit: "",
+        openingBalance: "",
+        notes: "",
+      });
+    } catch (error) {
       showToast("Failed to save shop", "error");
+      console.warn(error);
     } finally {
       setLoading(false);
     }
   };
-
   const handleDelete = async () => {
     if (shopId) {
       await dispatch(removeShop(shopId));
       showToast("Shop deleted");
-      navigation.goBack();
+      navigation.navigate("Shops" as never);
     }
   };
 
@@ -157,7 +206,18 @@ export function ShopFormScreen() {
       )}
       <CustomButton
         title="Back to Shops"
-        onPress={() => navigation.navigate("Shops" as never)}
+        onPress={() => {
+          navigation.navigate("Shops" as never);
+          setForm({
+            shopName: "",
+            ownerName: "",
+            phoneNumber: "",
+            address: "",
+            creditLimit: "",
+            openingBalance: "",
+            notes: "",
+          });
+        }}
         variant="secondary"
         style={{ marginTop: 12 }}
       />

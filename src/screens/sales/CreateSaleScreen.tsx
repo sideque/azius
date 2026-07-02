@@ -58,6 +58,7 @@ export function CreateSaleScreen() {
   const [pendingProduct, setPendingProduct] = useState<Product | null>(null);
   const [quantityInput, setQuantityInput] = useState("1");
   const [shareViaWhatsApp, setShareViaWhatsApp] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [sharePhoneNumber, setSharePhoneNumber] = useState("");
   const [pendingInvoice, setPendingInvoice] = useState<SaleWithDetails | null>(
     null,
@@ -66,6 +67,18 @@ export function CreateSaleScreen() {
   const load = useCallback(() => {
     dispatch(fetchProducts());
     dispatch(fetchShops());
+  }, [dispatch]);
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+
+    try {
+      await Promise.all([
+        dispatch(fetchProducts()).unwrap(),
+        dispatch(fetchShops()).unwrap(),
+      ]);
+    } finally {
+      setRefreshing(false);
+    }
   }, [dispatch]);
 
   useEffect(() => {
@@ -231,6 +244,18 @@ export function CreateSaleScreen() {
         placeholder="Search products..."
       />
 
+      {/* <FlatList
+        data={filteredProducts}
+        keyExtractor={(item) => item.id}
+        ListEmptyComponent={<EmptyState title="No Products" icon="📦" />}
+        renderItem={({ item }) => (
+          <ProductCard
+            product={item}
+            onAdd={() => handlePromptQuantity(item)}
+          />
+        )}
+        style={{ flex: 1 }}
+      /> */}
       <FlatList
         data={filteredProducts}
         keyExtractor={(item) => item.id}
@@ -242,6 +267,8 @@ export function CreateSaleScreen() {
           />
         )}
         style={{ flex: 1 }}
+        refreshing={refreshing}
+        onRefresh={onRefresh}
       />
 
       {cart.length > 0 && (

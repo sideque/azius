@@ -115,6 +115,41 @@ export function ProductFormScreen() {
     if (!validation.isValid) return;
 
     setLoading(true);
+    const existingProducts = await getProducts();
+
+    const duplicateName = existingProducts.find(
+      (p) =>
+        p.productName.trim().toLowerCase() ===
+          form.productName.trim().toLowerCase() &&
+        (!isEdit || p.id !== productId),
+    );
+
+    if (duplicateName) {
+      setErrors((prev) => ({
+        ...prev,
+        productName: "Product name already exists",
+      }));
+      showToast("Product name already exists", "error");
+      setLoading(false);
+      return;
+    }
+
+    const duplicateCode = existingProducts.find(
+      (p) =>
+        p.productCode.trim().toLowerCase() ===
+          form.productCode.trim().toLowerCase() &&
+        (!isEdit || p.id !== productId),
+    );
+
+    if (duplicateCode) {
+      setErrors((prev) => ({
+        ...prev,
+        productCode: "Product code already exists",
+      }));
+      showToast("Product code already exists", "error");
+      setLoading(false);
+      return;
+    }
     const data = {
       productName: form.productName.trim(),
       productCode: form.productCode.trim(),

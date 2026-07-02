@@ -67,7 +67,7 @@ export async function getDatabase(): Promise<void> {
 async function ensureSeedData() {
   const snapshot = await getDocs(query(usersCollection, limit(1)));
   if (!snapshot.empty) return;
-  await seedDatabase();
+  // await seedDatabase();
 }
 
 async function seedDatabase() {

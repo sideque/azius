@@ -82,44 +82,36 @@ export function LoginScreen({ navigation }: Props) {
         keyboardShouldPersistTaps="handled"
       >
         <View style={[styles.header, { backgroundColor: colors.primary }]}>
-          <Text style={styles.logo}>SD</Text>
+          <View style={styles.logoCircle}>
+            <Text style={styles.logo}>SD</Text>
+          </View>
           <Text style={styles.headerTitle}>Welcome Back</Text>
-          <Text style={styles.headerSub}>Sign in to continue</Text>
+          <Text style={styles.headerSub}>Sign in to your account</Text>
         </View>
         <View style={[styles.form, { backgroundColor: colors.surface }]}>
           <View style={styles.roleSwitcher}>
             <Pressable
               style={[
                 styles.roleButton,
-                selectedRole === "admin" && styles.roleButtonActive,
                 { borderColor: colors.primary },
+                selectedRole === "admin" && { backgroundColor: colors.primary },
               ]}
               onPress={() => setSelectedRole("admin")}
             >
-              <Text
-                style={[
-                  styles.roleButtonText,
-                  selectedRole === "admin" && styles.roleButtonTextActive,
-                ]}
-              >
-                Admin Login
+              <Text style={[styles.roleButtonText, { color: selectedRole === "admin" ? '#fff' : colors.textSecondary }]}>
+                🏢 Admin
               </Text>
             </Pressable>
             <Pressable
               style={[
                 styles.roleButton,
-                selectedRole === "sales" && styles.roleButtonActive,
                 { borderColor: colors.primary },
+                selectedRole === "sales" && { backgroundColor: colors.primary },
               ]}
               onPress={() => setSelectedRole("sales")}
             >
-              <Text
-                style={[
-                  styles.roleButtonText,
-                  selectedRole === "sales" && styles.roleButtonTextActive,
-                ]}
-              >
-                Sales Login
+              <Text style={[styles.roleButtonText, { color: selectedRole === "sales" ? '#fff' : colors.textSecondary }]}>
+                💼 Sales
               </Text>
             </Pressable>
           </View>
@@ -173,41 +165,43 @@ const styles = StyleSheet.create({
   scroll: { flexGrow: 1 },
   header: {
     paddingTop: 80,
-    paddingBottom: 40,
+    paddingBottom: 50,
     paddingHorizontal: 24,
     borderBottomLeftRadius: 32,
     borderBottomRightRadius: 32,
   },
-  logo: { fontSize: 36, fontWeight: "800", color: "#fff" },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: "700",
-    color: "#fff",
-    marginTop: 16,
+  logoCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
   },
-  headerSub: { fontSize: 15, color: "rgba(255,255,255,0.8)", marginTop: 4 },
+  logo: { fontSize: 28, fontWeight: "800", color: "#fff" },
+  headerTitle: { fontSize: 26, fontWeight: "800", color: "#fff", letterSpacing: -0.5 },
+  headerSub: { fontSize: 14, color: "rgba(255,255,255,0.75)", marginTop: 4 },
   form: {
     margin: 20,
-    marginTop: -20,
+    marginTop: -24,
     borderRadius: 20,
     padding: 24,
-    elevation: 4,
+    elevation: 6,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
-    shadowRadius: 8,
+    shadowRadius: 12,
   },
-  roleSwitcher: { flexDirection: "row", marginBottom: 16, gap: 8 },
+  roleSwitcher: { flexDirection: "row", marginBottom: 20, gap: 8 },
   roleButton: {
     flex: 1,
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingVertical: 10,
+    borderWidth: 1.5,
+    borderRadius: 12,
+    paddingVertical: 11,
     alignItems: "center",
   },
-  roleButtonActive: { backgroundColor: "#2563eb" },
-  roleButtonText: { fontWeight: "600" },
-  roleButtonTextActive: { color: "#fff" },
+  roleButtonText: { fontWeight: "700", fontSize: 13 },
   remember: { flexDirection: "row", alignItems: "center", marginBottom: 20 },
   checkbox: {
     width: 22,

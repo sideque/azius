@@ -178,5 +178,15 @@ export function EditPaymentScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16 },
-  infoCard: { padding: 16, borderRadius: 12, marginBottom: 16, borderWidth: 1 },
+  infoCard: { 
+    padding: 16, 
+    borderRadius: 14, 
+    marginBottom: 20, 
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
+  },
 });

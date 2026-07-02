@@ -33,7 +33,7 @@ const screenWidth = Dimensions.get("window").width - 32;
 type Tab = "sales" | "payments" | "ledger";
 
 export function ReportsScreen() {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const navigation = useNavigation<any>();
   const dispatch = useAppDispatch();
   const { salesReport, paymentReport } = useAppSelector((s) => s.reports);
@@ -184,7 +184,7 @@ export function ReportsScreen() {
         />
       }
     >
-      <View style={styles.tabs}>
+      <View style={[styles.tabs, { backgroundColor: isDark ? colors.border : '#E2E8F0' }]}>
         {(["sales", "payments", "ledger"] as Tab[]).map((t) => (
           <Pressable
             key={t}
@@ -357,20 +357,40 @@ export function ReportsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16 },
-  tabs: { flexDirection: "row", marginBottom: 16 },
+  tabs: { 
+    flexDirection: "row", 
+    marginBottom: 20, 
+    backgroundColor: '#F1F5F9', // light neutral bg for segments
+    padding: 4, 
+    borderRadius: 14,
+  },
   tab: {
     flex: 1,
-    padding: 12,
+    paddingVertical: 10,
     alignItems: "center",
     borderRadius: 10,
-    marginHorizontal: 4,
   },
-  section: { fontSize: 16, fontWeight: "700", marginTop: 16, marginBottom: 8 },
-  chart: { borderRadius: 12, marginBottom: 12 },
+  section: { 
+    fontSize: 15, 
+    fontWeight: "800", 
+    marginTop: 24, 
+    marginBottom: 12, 
+    textTransform: 'uppercase', 
+    letterSpacing: 0.6,
+  },
+  chart: { 
+    borderRadius: 16, 
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 2,
+  },
   row: {
     flexDirection: "row",
     padding: 14,
-    borderRadius: 10,
+    borderRadius: 14,
     marginBottom: 8,
     borderWidth: 1,
   },

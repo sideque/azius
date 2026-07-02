@@ -28,14 +28,19 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     ]).start(() => setVisible(false));
   }, [opacity]);
 
-  const bgColor = type === 'success' ? colors.success : type === 'error' ? colors.error : colors.info;
+  const bgColor = type === 'success' ? colors.successLight : type === 'error' ? colors.errorLight : colors.infoLight;
+  const textColor = type === 'success' ? colors.success : type === 'error' ? colors.error : colors.info;
+  const icon = type === 'success' ? '✓' : type === 'error' ? '✕' : 'ℹ';
 
   return (
     <ToastContext.Provider value={{ showToast }}>
       {children}
       {visible && (
-        <Animated.View style={[styles.toast, { backgroundColor: bgColor, opacity }]}>
-          <Text style={styles.toastText}>{message}</Text>
+        <Animated.View style={[styles.toast, { backgroundColor: bgColor, borderColor: textColor, opacity }]}>
+          <View style={[styles.iconCircle, { backgroundColor: textColor }]}>
+            <Text style={styles.iconText}>{icon}</Text>
+          </View>
+          <Text style={[styles.toastText, { color: textColor }]}>{message}</Text>
         </Animated.View>
       )}
     </ToastContext.Provider>
@@ -51,13 +56,23 @@ export function useToast() {
 const styles = StyleSheet.create({
   toast: {
     position: 'absolute',
-    bottom: 40,
+    bottom: 48,
     left: 20,
     right: 20,
-    padding: 16,
-    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderRadius: 14,
     zIndex: 9999,
-    elevation: 10,
+    elevation: 12,
+    borderWidth: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
   },
-  toastText: { color: '#fff', fontSize: 14, fontWeight: '600', textAlign: 'center' },
+  iconCircle: { width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginRight: 10 },
+  iconText: { color: '#fff', fontSize: 12, fontWeight: '800' },
+  toastText: { flex: 1, fontSize: 14, fontWeight: '600' },
 });

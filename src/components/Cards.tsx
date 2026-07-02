@@ -4,27 +4,33 @@ import { SaleWithDetails, Supplier } from "../types";
 import { formatCurrency, formatDateTime } from "../utils/formatters";
 import { useTheme } from "../theme/ThemeContext";
 
-const styles = StyleSheet.create({
-  card: { borderRadius: 12, padding: 16, marginBottom: 12, borderWidth: 1 },
-  header: { flexDirection: "row", justifyContent: "space-between" },
-  invoice: { fontSize: 16, fontWeight: "700" },
-  date: { fontSize: 12 },
-  shop: { fontSize: 15, fontWeight: "600", marginTop: 8 },
-  divider: { height: 1, marginVertical: 10 },
-  row: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 4,
-  },
-  itemName: { flex: 1, fontSize: 14 },
-  grand: { fontSize: 16, fontWeight: "700", marginTop: 4 },
-  amount: { fontSize: 16, fontWeight: "700" },
-  type: { fontSize: 14, fontWeight: "700" },
-  tableRow: { flexDirection: "row", borderBottomWidth: 1, paddingVertical: 10 },
-  cell: { width: 120, paddingHorizontal: 8, fontSize: 13 },
-  headerCell: { fontWeight: "700" },
-});
+// ─── Shared action button ─────────────────────────────────────────────────────
+function ActionBtn({
+  label,
+  onPress,
+  color,
+  bgColor,
+}: {
+  label: string;
+  onPress: () => void;
+  color: string;
+  bgColor: string;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.actionBtn,
+        { backgroundColor: bgColor },
+        pressed && { opacity: 0.75, transform: [{ scale: 0.97 }] },
+      ]}
+    >
+      <Text style={[styles.actionBtnText, { color }]}>{label}</Text>
+    </Pressable>
+  );
+}
 
+// ─── InvoiceCard ─────────────────────────────────────────────────────────────
 export function InvoiceCard({
   sale,
   onEdit,
@@ -36,102 +42,58 @@ export function InvoiceCard({
 }) {
   const { colors } = useTheme();
   return (
-    <View
-      style={[
-        styles.card,
-        { backgroundColor: colors.card, borderColor: colors.border },
-      ]}
-    >
+    <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
       <View style={styles.header}>
-        <Text style={[styles.invoice, { color: colors.primary }]}>
-          {sale.invoiceNumber}
-        </Text>
-        <Text style={[styles.date, { color: colors.textSecondary }]}>
+        <View style={[styles.invoiceBadge, { backgroundColor: colors.secondaryLight }]}>
+          <Text style={[styles.invoiceNum, { color: colors.secondary }]}>
+            {sale.invoiceNumber}
+          </Text>
+        </View>
+        <Text style={[styles.dateText, { color: colors.textMuted }]}>
           {formatDateTime(sale.createdAt)}
         </Text>
       </View>
-      <Text style={[styles.shop, { color: colors.text }]}>{sale.shopName}</Text>
+
+      <Text style={[styles.shopName, { color: colors.text }]}>{sale.shopName}</Text>
       <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
       {sale.items.map((item) => (
-        <View key={item.id} style={styles.row}>
-          <Text style={[styles.itemName, { color: colors.text }]}>
-            {item.productName} x{item.quantity}
+        <View key={item.id} style={styles.itemRow}>
+          <Text style={[styles.itemName, { color: colors.textSecondary }]} numberOfLines={1}>
+            {item.productName} × {item.quantity}
           </Text>
-          <Text style={{ color: colors.text }}>
+          <Text style={[styles.itemTotal, { color: colors.text }]}>
             {formatCurrency(item.total)}
           </Text>
         </View>
       ))}
+
       <View style={[styles.divider, { backgroundColor: colors.border }]} />
-      <View style={styles.row}>
-        <Text style={{ color: colors.textSecondary }}>Subtotal</Text>
-        <Text style={{ color: colors.text }}>
-          {formatCurrency(sale.subtotal)}
-        </Text>
+
+      <View style={styles.totalRow}>
+        <Text style={{ color: colors.textSecondary, fontSize: 13 }}>Subtotal</Text>
+        <Text style={{ color: colors.text, fontSize: 13 }}>{formatCurrency(sale.subtotal)}</Text>
       </View>
       {sale.discount > 0 && (
-        <View style={styles.row}>
-          <Text style={{ color: colors.textSecondary }}>Discount</Text>
-          <Text style={{ color: colors.error }}>
-            -{formatCurrency(sale.discount)}
-          </Text>
+        <View style={styles.totalRow}>
+          <Text style={{ color: colors.textSecondary, fontSize: 13 }}>Discount</Text>
+          <Text style={{ color: colors.error, fontSize: 13 }}>-{formatCurrency(sale.discount)}</Text>
         </View>
       )}
-      <View style={styles.row}>
-        <Text style={[styles.grand, { color: colors.text }]}>Grand Total</Text>
-        <Text style={[styles.grand, { color: colors.primary }]}>
+      <View style={[styles.totalRow, styles.grandRow]}>
+        <Text style={[styles.grandLabel, { color: colors.text }]}>Grand Total</Text>
+        <Text style={[styles.grandValue, { color: colors.primary }]}>
           {formatCurrency(sale.grandTotal)}
         </Text>
       </View>
+
       {(onEdit || onDelete) && (
-        <View
-          style={{
-            flexDirection: "row",
-            justifyContent: "flex-end",
-            marginTop: 12,
-            borderTopWidth: 1,
-            borderTopColor: colors.border,
-            paddingTop: 8,
-          }}
-        >
+        <View style={[styles.actions, { borderTopColor: colors.border }]}>
           {onEdit && (
-            <Pressable
-              onPress={onEdit}
-              style={{
-                paddingHorizontal: 12,
-                paddingVertical: 6,
-                backgroundColor: colors.primary + "20",
-                borderRadius: 6,
-                marginRight: onDelete ? 8 : 0,
-              }}
-            >
-              <Text
-                style={{
-                  color: colors.primary,
-                  fontSize: 12,
-                  fontWeight: "600",
-                }}
-              >
-                Edit
-              </Text>
-            </Pressable>
+            <ActionBtn label="Edit" onPress={onEdit} color={colors.secondary} bgColor={colors.secondaryLight} />
           )}
           {onDelete && (
-            <Pressable
-              onPress={onDelete}
-              style={{
-                paddingHorizontal: 12,
-                paddingVertical: 6,
-                backgroundColor: colors.error + "20",
-                borderRadius: 6,
-              }}
-            >
-              <Text
-                style={{ color: colors.error, fontSize: 12, fontWeight: "600" }}
-              >
-                Delete
-              </Text>
-            </Pressable>
+            <ActionBtn label="Delete" onPress={onDelete} color={colors.error} bgColor={colors.errorLight} />
           )}
         </View>
       )}
@@ -139,6 +101,7 @@ export function InvoiceCard({
   );
 }
 
+// ─── PaymentCard ─────────────────────────────────────────────────────────────
 export function PaymentCard({
   payment,
   onEdit,
@@ -156,77 +119,41 @@ export function PaymentCard({
 }) {
   const { colors } = useTheme();
   return (
-    <View
-      style={[
-        styles.card,
-        { backgroundColor: colors.card, borderColor: colors.border },
-      ]}
-    >
+    <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
       <View style={styles.header}>
-        <Text style={[styles.shop, { color: colors.text, marginTop: 0 }]}>
-          {payment.shopName}
-        </Text>
-        <Text style={[styles.amount, { color: colors.success }]}>
-          {formatCurrency(payment.amount)}
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.shopName, { color: colors.text, marginTop: 0 }]}>
+            {payment.shopName}
+          </Text>
+          <View style={styles.methodRow}>
+            <View style={[styles.methodBadge, { backgroundColor: colors.primaryLight }]}>
+              <Text style={[styles.methodText, { color: colors.primary }]}>
+                {payment.paymentMethod}
+              </Text>
+            </View>
+            <Text style={{ color: colors.textMuted, fontSize: 12 }}>
+              {formatDateTime(payment.paymentDate)}
+            </Text>
+          </View>
+        </View>
+        <Text style={[styles.paymentAmount, { color: colors.success }]}>
+          +{formatCurrency(payment.amount)}
         </Text>
       </View>
-      <Text style={{ color: colors.textSecondary, fontSize: 13 }}>
-        {payment.paymentMethod} • {formatDateTime(payment.paymentDate)}
-      </Text>
+
       {payment.notes ? (
-        <Text style={{ color: colors.textMuted, fontSize: 12, marginTop: 4 }}>
+        <Text style={[styles.notes, { color: colors.textMuted, borderTopColor: colors.border }]}>
           {payment.notes}
         </Text>
       ) : null}
+
       {(onEdit || onDelete) && (
-        <View
-          style={{
-            flexDirection: "row",
-            justifyContent: "flex-end",
-            marginTop: 12,
-            borderTopWidth: 1,
-            borderTopColor: colors.border,
-            paddingTop: 8,
-          }}
-        >
+        <View style={[styles.actions, { borderTopColor: colors.border }]}>
           {onEdit && (
-            <Pressable
-              onPress={onEdit}
-              style={{
-                paddingHorizontal: 12,
-                paddingVertical: 6,
-                backgroundColor: colors.primary + "20",
-                borderRadius: 6,
-                marginRight: onDelete ? 8 : 0,
-              }}
-            >
-              <Text
-                style={{
-                  color: colors.primary,
-                  fontSize: 12,
-                  fontWeight: "600",
-                }}
-              >
-                Edit
-              </Text>
-            </Pressable>
+            <ActionBtn label="Edit" onPress={onEdit} color={colors.secondary} bgColor={colors.secondaryLight} />
           )}
           {onDelete && (
-            <Pressable
-              onPress={onDelete}
-              style={{
-                paddingHorizontal: 12,
-                paddingVertical: 6,
-                backgroundColor: colors.error + "20",
-                borderRadius: 6,
-              }}
-            >
-              <Text
-                style={{ color: colors.error, fontSize: 12, fontWeight: "600" }}
-              >
-                Delete
-              </Text>
-            </Pressable>
+            <ActionBtn label="Delete" onPress={onDelete} color={colors.error} bgColor={colors.errorLight} />
           )}
         </View>
       )}
@@ -234,6 +161,7 @@ export function PaymentCard({
   );
 }
 
+// ─── SupplierCard ─────────────────────────────────────────────────────────────
 export function SupplierCard({
   supplier,
   onPress,
@@ -242,41 +170,51 @@ export function SupplierCard({
   onPress?: () => void;
 }) {
   const { colors } = useTheme();
+  const initials = supplier.supplierName.substring(0, 2).toUpperCase();
   return (
     <Pressable
       onPress={onPress}
-      style={[
+      style={({ pressed }) => [
         styles.card,
         { backgroundColor: colors.card, borderColor: colors.border },
+        pressed && { opacity: 0.95, transform: [{ scale: 0.99 }] },
       ]}
     >
-      <View style={styles.header}>
-        <Text style={[styles.invoice, { color: colors.primary }]}>
-          {supplier.supplierName}
-        </Text>
+      <View style={styles.supplierHeader}>
+        <View style={[styles.supplierAvatar, { backgroundColor: colors.secondaryLight }]}>
+          <Text style={[styles.supplierAvatarText, { color: colors.secondary }]}>{initials}</Text>
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.shopName, { color: colors.text, marginTop: 0 }]}>
+            {supplier.supplierName}
+          </Text>
+          <Text style={{ color: colors.textSecondary, fontSize: 13 }}>
+            {supplier.contactName}
+          </Text>
+          <Text style={{ color: colors.textMuted, fontSize: 12, marginTop: 2 }}>
+            {supplier.phoneNumber}
+          </Text>
+        </View>
+        <Text style={{ color: colors.textMuted, fontSize: 18 }}>›</Text>
       </View>
-      <Text style={[styles.shop, { color: colors.text }]}>
-        {supplier.contactName}
-      </Text>
-      <Text
-        style={[styles.date, { color: colors.textSecondary, marginTop: 6 }]}
-      >
-        {supplier.phoneNumber}
-      </Text>
-      {supplier.address ? (
-        <Text style={{ color: colors.textMuted, marginTop: 4 }}>
-          {supplier.address}
-        </Text>
-      ) : null}
-      {supplier.notes ? (
-        <Text style={{ color: colors.textMuted, marginTop: 4 }}>
-          {supplier.notes}
-        </Text>
-      ) : null}
+
+      {(supplier.address || supplier.notes) && (
+        <View style={[styles.supplierFooter, { borderTopColor: colors.border }]}>
+          {supplier.address ? (
+            <Text style={{ color: colors.textMuted, fontSize: 12 }}>📍 {supplier.address}</Text>
+          ) : null}
+          {supplier.notes ? (
+            <Text style={{ color: colors.textMuted, fontSize: 12, marginTop: 4 }}>
+              📝 {supplier.notes}
+            </Text>
+          ) : null}
+        </View>
+      )}
     </Pressable>
   );
 }
 
+// ─── LedgerCard ─────────────────────────────────────────────────────────────
 export function LedgerCard({
   entry,
   onPress,
@@ -297,121 +235,64 @@ export function LedgerCard({
 }) {
   const { colors } = useTheme();
   const isSale = entry.transactionType === "sale";
-  const CardContent = (
-    <View
-      style={[
-        styles.card,
-        { backgroundColor: colors.card, borderColor: colors.border },
-      ]}
-    >
+  const typeColor = isSale ? colors.error : colors.success;
+  const typeBg = isSale ? colors.errorLight : colors.successLight;
+
+  return (
+    <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
       <View style={styles.header}>
-        <View>
-          <Text
-            style={[
-              styles.type,
-              { color: isSale ? colors.error : colors.success },
-            ]}
-          >
-            {isSale ? "Sale (Debit)" : "Payment (Credit)"}
-          </Text>
-          <Text style={{ color: colors.textMuted, fontSize: 12 }}>
+        <View style={{ flex: 1 }}>
+          <View style={[styles.txTypeBadge, { backgroundColor: typeBg }]}>
+            <Text style={[styles.txTypeText, { color: typeColor }]}>
+              {isSale ? "Sale (Debit)" : "Payment (Credit)"}
+            </Text>
+          </View>
+          <Text style={{ color: colors.textMuted, fontSize: 12, marginTop: 4 }}>
             {entry.referenceNumber}
           </Text>
         </View>
-        <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
+        <Text style={{ color: colors.textMuted, fontSize: 12 }}>
           {formatDateTime(entry.createdAt)}
         </Text>
       </View>
-      <View style={[styles.row, { marginTop: 8 }]}>
-        <Text style={{ color: colors.text }}>
-          {isSale
-            ? `+${formatCurrency(entry.debit)}`
-            : `-${formatCurrency(entry.credit)}`}
-        </Text>
-        <Text style={{ color: colors.text, fontWeight: "700" }}>
-          Bal: {formatCurrency(entry.balance)}
-        </Text>
+
+      <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
+      <View style={styles.ledgerAmounts}>
+        <View>
+          <Text style={{ color: colors.textMuted, fontSize: 11, fontWeight: '600', textTransform: 'uppercase' }}>
+            {isSale ? "Debit" : "Credit"}
+          </Text>
+          <Text style={[styles.ledgerAmount, { color: typeColor }]}>
+            {isSale ? `+${formatCurrency(entry.debit)}` : `-${formatCurrency(entry.credit)}`}
+          </Text>
+        </View>
+        <View style={{ alignItems: 'flex-end' }}>
+          <Text style={{ color: colors.textMuted, fontSize: 11, fontWeight: '600', textTransform: 'uppercase' }}>Balance</Text>
+          <Text style={[styles.ledgerAmount, { color: colors.text }]}>
+            {formatCurrency(entry.balance)}
+          </Text>
+        </View>
       </View>
+
       {(onPress || onEdit || onDelete) && (
-        <View
-          style={{
-            flexDirection: "row",
-            justifyContent: "flex-end",
-            marginTop: 12,
-            borderTopWidth: 1,
-            borderTopColor: colors.border,
-            paddingTop: 8,
-          }}
-        >
+        <View style={[styles.actions, { borderTopColor: colors.border }]}>
           {onPress && (
-            <Pressable
-              onPress={onPress}
-              style={{
-                paddingHorizontal: 12,
-                paddingVertical: 6,
-                backgroundColor: colors.primary + "20",
-                borderRadius: 6,
-                marginRight: onEdit || onDelete ? 8 : 0,
-              }}
-            >
-              <Text
-                style={{
-                  color: colors.primary,
-                  fontSize: 12,
-                  fontWeight: "600",
-                }}
-              >
-                View Details
-              </Text>
-            </Pressable>
+            <ActionBtn label="View Details" onPress={onPress} color={colors.secondary} bgColor={colors.secondaryLight} />
           )}
           {onEdit && (
-            <Pressable
-              onPress={onEdit}
-              style={{
-                paddingHorizontal: 12,
-                paddingVertical: 6,
-                backgroundColor: colors.primary + "20",
-                borderRadius: 6,
-                marginRight: onDelete ? 8 : 0,
-              }}
-            >
-              <Text
-                style={{
-                  color: colors.primary,
-                  fontSize: 12,
-                  fontWeight: "600",
-                }}
-              >
-                Edit
-              </Text>
-            </Pressable>
+            <ActionBtn label="Edit" onPress={onEdit} color={colors.secondary} bgColor={colors.secondaryLight} />
           )}
           {onDelete && (
-            <Pressable
-              onPress={onDelete}
-              style={{
-                paddingHorizontal: 12,
-                paddingVertical: 6,
-                backgroundColor: colors.error + "20",
-                borderRadius: 6,
-              }}
-            >
-              <Text
-                style={{ color: colors.error, fontSize: 12, fontWeight: "600" }}
-              >
-                Delete
-              </Text>
-            </Pressable>
+            <ActionBtn label="Delete" onPress={onDelete} color={colors.error} bgColor={colors.errorLight} />
           )}
         </View>
       )}
     </View>
   );
-
-  return CardContent;
 }
 
+// ─── DataTable ─────────────────────────────────────────────────────────────
 export function DataTable({
   headers,
   rows,
@@ -421,16 +302,11 @@ export function DataTable({
 }) {
   const { colors } = useTheme();
   return (
-    <ScrollView horizontal>
-      <View>
-        <View
-          style={[styles.tableRow, { backgroundColor: colors.primaryLight }]}
-        >
+    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+      <View style={[styles.tableContainer, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <View style={[styles.tableRow, { backgroundColor: colors.primaryLight }]}>
           {headers.map((h) => (
-            <Text
-              key={h}
-              style={[styles.cell, styles.headerCell, { color: colors.text }]}
-            >
+            <Text key={h} style={[styles.headerCell, { color: colors.primary }]}>
               {h}
             </Text>
           ))}
@@ -438,7 +314,10 @@ export function DataTable({
         {rows.map((row, i) => (
           <View
             key={i}
-            style={[styles.tableRow, { borderBottomColor: colors.border }]}
+            style={[
+              styles.tableRow,
+              { borderBottomColor: colors.border, backgroundColor: i % 2 === 0 ? colors.surface : colors.background },
+            ]}
           >
             {row.map((cell, j) => (
               <Text key={j} style={[styles.cell, { color: colors.text }]}>
@@ -451,3 +330,81 @@ export function DataTable({
     </ScrollView>
   );
 }
+
+const styles = StyleSheet.create({
+  card: {
+    borderRadius: 14,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  header: { flexDirection: "row", justifyContent: "space-between", alignItems: 'flex-start' },
+  divider: { height: 1, marginVertical: 12 },
+
+  // Invoice
+  invoiceBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
+  invoiceNum: { fontSize: 13, fontWeight: "800" },
+  dateText: { fontSize: 12 },
+  shopName: { fontSize: 15, fontWeight: "700", marginTop: 8 },
+  itemRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 },
+  itemName: { flex: 1, fontSize: 13, marginRight: 8 },
+  itemTotal: { fontSize: 13, fontWeight: '600' },
+  totalRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 4 },
+  grandRow: { marginTop: 4 },
+  grandLabel: { fontSize: 15, fontWeight: "700" },
+  grandValue: { fontSize: 16, fontWeight: "800" },
+
+  // Payment
+  methodRow: { flexDirection: 'row', alignItems: 'center', marginTop: 5, gap: 8 },
+  methodBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
+  methodText: { fontSize: 11, fontWeight: '700' },
+  paymentAmount: { fontSize: 18, fontWeight: "800" },
+  notes: { fontSize: 12, marginTop: 10, paddingTop: 10, borderTopWidth: 1 },
+
+  // Supplier
+  supplierHeader: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  supplierAvatar: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  supplierAvatarText: { fontSize: 16, fontWeight: '800' },
+  supplierFooter: { marginTop: 12, paddingTop: 12, borderTopWidth: 1 },
+
+  // Ledger
+  txTypeBadge: { alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
+  txTypeText: { fontSize: 12, fontWeight: '700' },
+  ledgerAmounts: { flexDirection: 'row', justifyContent: 'space-between' },
+  ledgerAmount: { fontSize: 18, fontWeight: '800', marginTop: 4 },
+
+  // Actions
+  actions: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    marginTop: 12,
+    borderTopWidth: 1,
+    paddingTop: 12,
+    gap: 8,
+  },
+  actionBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 8,
+  },
+  actionBtnText: {
+    fontSize: 12,
+    fontWeight: "700",
+  },
+
+  // DataTable
+  tableContainer: {
+    borderRadius: 12,
+    borderWidth: 1,
+    overflow: 'hidden',
+    marginBottom: 12,
+  },
+  tableRow: { flexDirection: "row", borderBottomWidth: 1, paddingVertical: 11 },
+  headerCell: { width: 130, paddingHorizontal: 12, fontSize: 12, fontWeight: "700", textTransform: 'uppercase', letterSpacing: 0.4 },
+  cell: { width: 130, paddingHorizontal: 12, fontSize: 13 },
+});

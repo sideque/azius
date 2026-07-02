@@ -838,8 +838,8 @@ export function SupplierReportsScreen() {
             ]}
           >
             <View style={styles.statementHeaderTop}>
-              <View style={styles.avatarCircle}>
-                <Text style={styles.avatarText}>
+              <View style={[styles.avatarCircle, { backgroundColor: colors.primaryLight }]}>
+                <Text style={[styles.avatarText, { color: colors.primary }]}>
                   {selectedSupplier.supplierName?.charAt(0)?.toUpperCase() ?? "S"}
                 </Text>
               </View>
@@ -954,17 +954,21 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1,
     padding: 18,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 3,
   },
   statementHeaderTop: { flexDirection: "row", alignItems: "center" },
   avatarCircle: {
     width: 44,
     height: 44,
-    borderRadius: 22,
-    backgroundColor: "#6366F1",
+    borderRadius: 12, // soft rounded corners instead of circle
     alignItems: "center",
     justifyContent: "center",
   },
-  avatarText: { color: "#FFFFFF", fontSize: 18, fontWeight: "700" },
+  avatarText: { fontSize: 16, fontWeight: "800" },
   statementName: { fontSize: 17, fontWeight: "700" },
   statementSub: { fontSize: 12, marginTop: 2 },
   statementDivider: {
@@ -987,6 +991,11 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1,
     padding: 14,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
   },
   statLabel: { fontSize: 10, fontWeight: "700", letterSpacing: 0.6 },
   statValue: { fontSize: 18, fontWeight: "800", marginTop: 6 },
@@ -1000,7 +1009,12 @@ const styles = StyleSheet.create({
     marginTop: 24,
     marginBottom: 12,
   },
-  sectionTitle: { fontSize: 16, fontWeight: "700" },
+  sectionTitle: { 
+    fontSize: 14, 
+    fontWeight: "800", 
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+  },
   ledgerSectionCount: { fontSize: 12 },
   emptyText: { textAlign: "center", marginVertical: 20 },
 
@@ -1010,6 +1024,11 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1,
     overflow: "hidden",
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 3,
+    elevation: 1,
   },
   ledgerAccentBar: { width: 4 },
   ledgerCardBody: { flex: 1, padding: 14 },
@@ -1017,11 +1036,11 @@ const styles = StyleSheet.create({
   typeBadge: {
     width: 32,
     height: 32,
-    borderRadius: 16,
+    borderRadius: 10,
     alignItems: "center",
     justifyContent: "center",
   },
-  typeBadgeIcon: { fontSize: 16, fontWeight: "800" },
+  typeBadgeIcon: { fontSize: 14, fontWeight: "800" },
   ledgerHeaderText: { flex: 1, marginLeft: 10 },
   ledgerReference: { fontSize: 14, fontWeight: "700" },
   ledgerDate: { fontSize: 11, marginTop: 2 },

@@ -84,8 +84,28 @@ export function ProductListScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16 },
-  filters: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 8 },
-  chip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, marginRight: 8, marginBottom: 8, borderWidth: 1 },
-  addBtn: { padding: 14, borderRadius: 12, alignItems: 'center', marginBottom: 12 },
-  addText: { color: '#fff', fontWeight: '700', fontSize: 15 },
+  filters: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 12, gap: 4 },
+  chip: { 
+    paddingHorizontal: 14, 
+    paddingVertical: 7, 
+    borderRadius: 20, 
+    borderWidth: 1.5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.02,
+    shadowRadius: 2,
+    elevation: 0.5,
+  },
+  addBtn: { 
+    padding: 14, 
+    borderRadius: 12, 
+    alignItems: 'center', 
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 1.5,
+  },
+  addText: { color: '#fff', fontWeight: '700', fontSize: 15, letterSpacing: 0.2 },
 });

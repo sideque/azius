@@ -180,7 +180,13 @@ const styles = StyleSheet.create({
   },
   balanceCard: {
     padding: 16,
-    borderRadius: 12,
+    borderRadius: 14,
     marginVertical: 16,
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
   },
 });

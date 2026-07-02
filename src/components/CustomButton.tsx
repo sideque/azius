@@ -14,7 +14,13 @@ interface Props {
 export function CustomButton({ title, onPress, variant = 'primary', loading, disabled, style }: Props) {
   const { colors } = useTheme();
   const isOutline = variant === 'outline';
-  const bg = variant === 'danger' ? colors.error : variant === 'secondary' ? colors.secondary : colors.primary;
+  
+  // Custom button background color mapping
+  const bg = variant === 'danger' 
+    ? colors.error 
+    : variant === 'secondary' 
+      ? colors.secondary 
+      : colors.primary;
 
   return (
     <Pressable
@@ -22,9 +28,12 @@ export function CustomButton({ title, onPress, variant = 'primary', loading, dis
       disabled={disabled || loading}
       style={({ pressed }) => [
         styles.btn,
-        isOutline ? { backgroundColor: 'transparent', borderWidth: 1.5, borderColor: colors.primary } : { backgroundColor: bg },
+        isOutline 
+          ? { backgroundColor: 'transparent', borderWidth: 1.5, borderColor: colors.primary } 
+          : { backgroundColor: bg },
         (disabled || loading) && { opacity: 0.5 },
-        pressed && { opacity: 0.85 },
+        pressed && styles.pressed,
+        pressed && { transform: [{ scale: 0.98 }] },
         style,
       ]}
     >
@@ -38,6 +47,25 @@ export function CustomButton({ title, onPress, variant = 'primary', loading, dis
 }
 
 const styles = StyleSheet.create({
-  btn: { paddingVertical: 14, paddingHorizontal: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  text: { fontSize: 16, fontWeight: '600' },
+  btn: { 
+    paddingVertical: 14, 
+    paddingHorizontal: 24, 
+    borderRadius: 12, 
+    alignItems: 'center', 
+    justifyContent: 'center',
+    shadowColor: 'rgba(0, 0, 0, 0.05)',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  text: { 
+    fontSize: 16, 
+    fontWeight: '700',
+    letterSpacing: 0.2,
+  },
+  pressed: {
+    opacity: 0.9,
+  },
 });
+

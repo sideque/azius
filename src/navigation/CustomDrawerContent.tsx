@@ -50,19 +50,30 @@ export function CustomDrawerContent(props: any) {
 }
 
 const styles = StyleSheet.create({
-  header: { padding: 24, paddingTop: 48, marginBottom: 8 },
+  header: { 
+    padding: 24, 
+    paddingTop: 56, 
+    marginBottom: 12,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
   avatar: {
     width: 56,
     height: 56,
-    borderRadius: 28,
-    backgroundColor: "rgba(255,255,255,0.2)",
+    borderRadius: 16, // squircle avatar
+    backgroundColor: "rgba(255,255,255,0.25)",
     textAlign: "center",
     lineHeight: 56,
-    fontSize: 24,
-    fontWeight: "700",
+    fontSize: 22,
+    fontWeight: "800",
     color: "#fff",
     overflow: "hidden",
   },
-  name: { color: "#fff", fontSize: 18, fontWeight: "700", marginTop: 12 },
-  role: { color: "rgba(255,255,255,0.8)", fontSize: 13, marginTop: 2 },
+  name: { color: "#fff", fontSize: 18, fontWeight: "800", marginTop: 14, letterSpacing: -0.2 },
+  role: { color: "rgba(255,255,255,0.85)", fontSize: 12, fontWeight: "600", marginTop: 3, textTransform: 'uppercase', letterSpacing: 0.8 },
 });

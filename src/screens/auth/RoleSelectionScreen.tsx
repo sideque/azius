@@ -30,15 +30,15 @@ export function RoleSelectionScreen({ navigation, route }: Props) {
     </View>
   );
 }
-
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 24, justifyContent: "center" },
-  title: { fontSize: 28, fontWeight: "700", textAlign: "center" },
+  container: { flex: 1, padding: 24, justifyContent: "center", alignItems: 'center' },
+  title: { fontSize: 28, fontWeight: "800", textAlign: "center", letterSpacing: -0.5 },
   subtitle: {
     fontSize: 15,
     textAlign: "center",
-    marginTop: 8,
-    marginBottom: 32,
+    marginTop: 10,
+    marginBottom: 40,
+    lineHeight: 22,
   },
-  btn: { marginBottom: 16 },
+  btn: { marginBottom: 16, width: '100%' },
 });

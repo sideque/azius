@@ -42,6 +42,16 @@ export function ShopListScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16 },
-  addBtn: { padding: 14, borderRadius: 12, alignItems: 'center', marginBottom: 12 },
-  addText: { color: '#fff', fontWeight: '700', fontSize: 15 },
+  addBtn: { 
+    padding: 14, 
+    borderRadius: 12, 
+    alignItems: 'center', 
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 1.5,
+  },
+  addText: { color: '#fff', fontWeight: '700', fontSize: 15, letterSpacing: 0.2 },
 });

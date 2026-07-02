@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, TextInput, View } from 'react-native';
+import { StyleSheet, Text, TextInput, View } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
 
 interface Props {
@@ -12,18 +12,33 @@ export function SearchBar({ value, onChangeText, placeholder = 'Search...' }: Pr
   const { colors } = useTheme();
   return (
     <View style={[styles.container, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+      <Text style={[styles.icon, { color: colors.textMuted }]}>🔍</Text>
       <TextInput
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
         placeholderTextColor={colors.textMuted}
         style={[styles.input, { color: colors.text }]}
+        returnKeyType="search"
       />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { borderWidth: 1, borderRadius: 12, paddingHorizontal: 16, marginBottom: 12 },
-  input: { paddingVertical: 12, fontSize: 16 },
+  container: {
+    borderWidth: 1.5,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    marginBottom: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  icon: { fontSize: 15, marginRight: 8 },
+  input: { flex: 1, paddingVertical: 13, fontSize: 15, fontWeight: '400' },
 });

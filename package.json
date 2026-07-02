@@ -16,6 +16,8 @@
     "expo-asset": "~56.0.17",
     "expo-file-system": "^56.0.8",
     "expo-linear-gradient": "^56.0.4",
+    "expo-print": "~56.0.4",
+    "expo-sharing": "~56.0.19",
     "expo-sqlite": "~56.0.5",
     "expo-status-bar": "~56.0.4",
     "firebase": "^11.10.0",

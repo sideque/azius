@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { FlatList, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { DrawerNavigationProp } from "@react-navigation/drawer";
 import {
@@ -149,12 +149,12 @@ export function SupplierBillingScreen() {
 
     if (!selectedProductId) nextErrors.product = "Please select a product";
     if (isNaN(qty) || qty <= 0)
-      nextErrors.quantity = "Quantity must be greater than zero";
+      nextErrors.quantity = "Qty must be > 0";
     const sellPrice = parseFloat(sellingPrice);
     if (isNaN(price) || price <= 0)
-      nextErrors.purchasePrice = "Purchase price must be greater than zero";
+      nextErrors.purchasePrice = "Purchase price must be > 0";
     if (isNaN(sellPrice) || sellPrice <= 0)
-      nextErrors.sellingPrice = "Sales price must be greater than zero";
+      nextErrors.sellingPrice = "Sales price must be > 0";
     if (!product) nextErrors.product = "Please select a valid product";
 
     if (Object.keys(nextErrors).length > 0) {
@@ -302,161 +302,477 @@ export function SupplierBillingScreen() {
   return (
     <ScrollView
       style={[styles.container, { backgroundColor: colors.background }]}
+      contentContainerStyle={styles.scrollContent}
       keyboardShouldPersistTaps="handled"
     >
-      <Dropdown
-        label="Supplier"
-        options={supplierOptions}
-        value={selectedSupplierId}
-        onChange={isEditMode ? () => {} : setSelectedSupplierId}
-      />
-      <Dropdown
-        label="Product"
-        options={productOptions}
-        value={selectedProductId}
-        onChange={setSelectedProductId}
-      />
-      {errors.product ? (
-        <Text style={[styles.errorText, { color: colors.error }]}>
-          {errors.product}
+      {/* Screen Header Banner */}
+      <View style={styles.screenHeader}>
+        <Text style={[styles.screenTitle, { color: colors.text }]}>
+          {isEditMode ? "Edit Purchase Invoice" : "New Purchase Invoice"}
         </Text>
-      ) : null}
-      <CustomInput
-        label="Quantity"
-        value={quantity}
-        onChangeText={setQuantity}
-        keyboardType="decimal-pad"
-        error={errors.quantity}
-      />
-      <CustomInput
-        label="Purchase Price"
-        value={purchasePrice}
-        onChangeText={setPurchasePrice}
-        keyboardType="decimal-pad"
-        error={errors.purchasePrice}
-      />
-      <CustomInput
-        label="Sales Price"
-        value={sellingPrice}
-        onChangeText={setSellingPrice}
-        keyboardType="decimal-pad"
-        error={errors.sellingPrice}
-      />
-      <CustomButton title="Add Item" onPress={addItem} />
+        <Text style={[styles.screenSubtitle, { color: colors.textSecondary }]}>
+          {isEditMode
+            ? "Modify details of the supplier bill and update inventory stock."
+            : "Record items received from supplier and update stock automatically."}
+        </Text>
+      </View>
 
-      {items.length > 0 ? (
-        <View style={{ marginTop: 20 }}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>
-            Bill Items
-          </Text>
-          <FlatList
-            data={items}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item }) => (
-              <View
-                style={[
-                  styles.itemRow,
-                  { backgroundColor: colors.card, borderColor: colors.border },
-                ]}
-              >
-                <View>
-                  <Text style={[styles.itemName, { color: colors.text }]}>
-                    {item.productName}
-                  </Text>
-                  <Text style={{ color: colors.textSecondary }}>
-                    {item.quantity} × {item.purchasePrice.toFixed(2)} ={" "}
-                    {item.total.toFixed(2)}
-                  </Text>
-                  <Text style={{ color: colors.textSecondary }}>
-                    Sell: {item.sellingPrice.toFixed(2)}
-                  </Text>
-                </View>
-                <CustomButton
-                  title="Remove"
-                  onPress={() => removeItem(item.id)}
-                  variant="danger"
-                  style={styles.removeBtn}
-                />
-              </View>
-            )}
+      {/* Invoice Details Card */}
+      <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <View style={styles.cardHeader}>
+          <Text style={styles.cardIcon}>📄</Text>
+          <Text style={[styles.cardTitle, { color: colors.text }]}>Invoice Metadata</Text>
+        </View>
+
+        {isEditMode ? (
+          <View
+            style={[
+              styles.disabledContainer,
+              { backgroundColor: colors.background, borderColor: colors.border },
+            ]}
+          >
+            <Text style={[styles.disabledLabel, { color: colors.textSecondary }]}>
+              Supplier
+            </Text>
+            <Text style={[styles.disabledValue, { color: colors.text }]}>
+              {selectedSupplier?.supplierName || "Supplier Info Locked"}
+            </Text>
+            <Text style={[styles.disabledHint, { color: colors.textMuted }]}>
+              Supplier cannot be changed in edit mode
+            </Text>
+          </View>
+        ) : (
+          <Dropdown
+            label="Supplier"
+            options={supplierOptions}
+            value={selectedSupplierId}
+            onChange={setSelectedSupplierId}
           />
+        )}
+        {errors.supplierId ? (
+          <Text style={[styles.errorText, { color: colors.error, marginBottom: 12 }]}>
+            {errors.supplierId}
+          </Text>
+        ) : null}
+
+        {/* Date Row with period option */}
+        <View style={styles.row}>
+          <View style={styles.col}>
+            <DatePickerField
+              label="Bill Date"
+              value={billDate}
+              onChange={setBillDate}
+            />
+          </View>
+          <View style={{ width: 120 }}>
+            <Dropdown
+              label="Period"
+              options={[{ label: "Today", value: "today" }]}
+              value="today"
+              onChange={() => {}}
+            />
+          </View>
+        </View>
+      </View>
+
+      {/* Add Products Card */}
+      <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <View style={styles.cardHeader}>
+          <Text style={styles.cardIcon}>🛍️</Text>
+          <Text style={[styles.cardTitle, { color: colors.text }]}>Quick Add Product</Text>
+        </View>
+
+        <Dropdown
+          label="Select Product"
+          options={productOptions}
+          value={selectedProductId}
+          onChange={setSelectedProductId}
+        />
+        {errors.product ? (
+          <Text style={[styles.errorText, { color: colors.error, marginBottom: 12 }]}>
+            {errors.product}
+          </Text>
+        ) : null}
+
+        {selectedProduct && (
+          <View style={[styles.stockBadge, { backgroundColor: colors.infoLight }]}>
+            <Text style={[styles.stockText, { color: colors.info }]}>
+              📦 Stock Available: {selectedProduct.stockQuantity} units
+            </Text>
+          </View>
+        )}
+
+        {/* 3-Column Numeric Inputs Grid */}
+        <View style={styles.gridRow}>
+          <View style={styles.gridCol}>
+            <CustomInput
+              label="Qty"
+              placeholder="0"
+              value={quantity}
+              onChangeText={setQuantity}
+              keyboardType="decimal-pad"
+              error={errors.quantity}
+            />
+          </View>
+          <View style={styles.gridColLarge}>
+            <CustomInput
+              label="Buy (₹)"
+              placeholder="0.00"
+              value={purchasePrice}
+              onChangeText={setPurchasePrice}
+              keyboardType="decimal-pad"
+              error={errors.purchasePrice}
+            />
+          </View>
+          <View style={styles.gridColLarge}>
+            <CustomInput
+              label="Sell (₹)"
+              placeholder="0.00"
+              value={sellingPrice}
+              onChangeText={setSellingPrice}
+              keyboardType="decimal-pad"
+              error={errors.sellingPrice}
+            />
+          </View>
+        </View>
+
+        <CustomButton
+          title="Add Product to Bill"
+          onPress={addItem}
+          variant="secondary"
+          style={styles.addProductBtn}
+        />
+      </View>
+
+      {/* Bill Items Receipt Card */}
+      {items.length > 0 ? (
+        <View
+          style={[
+            styles.receiptCard,
+            { backgroundColor: colors.card, borderColor: colors.border },
+          ]}
+        >
+          <View style={styles.receiptHeader}>
+            <Text style={[styles.receiptTitle, { color: colors.textSecondary }]}>
+              🧾 Invoice Items ({items.length})
+            </Text>
+          </View>
+
+          {items.map((item) => (
+            <View
+              key={item.id}
+              style={[styles.receiptItemRow, { borderBottomColor: colors.border }]}
+            >
+              <View style={styles.itemInfo}>
+                <Text style={[styles.itemName, { color: colors.text }]} numberOfLines={1}>
+                  {item.productName}
+                </Text>
+                <View style={styles.itemSubrow}>
+                  <Text style={[styles.itemQtyPrice, { color: colors.textSecondary }]}>
+                    {item.quantity} × ₹{item.purchasePrice.toFixed(2)}
+                  </Text>
+                  <View style={[styles.sellBadge, { backgroundColor: colors.secondaryLight }]}>
+                    <Text style={[styles.sellBadgeText, { color: colors.secondary }]}>
+                      Sell: ₹{item.sellingPrice.toFixed(2)}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+
+              <View style={styles.itemRightAction}>
+                <Text style={[styles.itemTotalAmount, { color: colors.text }]}>
+                  ₹{item.total.toFixed(2)}
+                </Text>
+                <Pressable
+                  onPress={() => removeItem(item.id)}
+                  style={({ pressed }) => [
+                    styles.itemDeleteBtn,
+                    { backgroundColor: colors.errorLight },
+                    pressed && { opacity: 0.7 },
+                  ]}
+                >
+                  <Text style={{ color: colors.error, fontSize: 13, fontWeight: "700" }}>
+                    ✕
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
+          ))}
+
+          {/* Receipt Dashed Total Summary */}
+          <View style={[styles.receiptTotalRow, { borderTopColor: colors.border }]}>
+            <Text style={[styles.receiptTotalLabel, { color: colors.textSecondary }]}>
+              Total Amount
+            </Text>
+            <Text style={[styles.receiptTotalValue, { color: colors.primary }]}>
+              ₹{totalAmount.toFixed(2)}
+            </Text>
+          </View>
         </View>
       ) : (
         <EmptyState
-          title="No bill items"
-          message="Add products to create a supplier bill."
+          title="No Items Added Yet"
+          message="Select products, enter quantities and purchase price to populate this bill invoice."
           icon="🧾"
         />
       )}
 
-      <Dropdown
-        label="Bill Date"
-        options={[{ label: "Today", value: "today" }]}
-        value="today"
-        onChange={() => {}}
-      />
-      <DatePickerField
-        label="Bill Date"
-        value={billDate}
-        onChange={setBillDate}
-      />
-      <CustomInput
-        label="Notes"
-        value={notes}
-        onChangeText={setNotes}
-        multiline
-        numberOfLines={3}
-      />
-      <Text style={[styles.totalText, { color: colors.text }]}>
-        Total: {totalAmount.toFixed(2)}
-      </Text>
-      <CustomButton
-        title={isEditMode ? "Update Supplier Bill" : "Save Supplier Bill"}
-        onPress={handleSave}
-        loading={loading}
-      />
-      <CustomButton
-        title="Back to Supplier Reports"
-        onPress={() => navigation.navigate("SupplierReports" as never)}
-        variant="secondary"
-        style={{ marginTop: 12 }}
-      />
+      {/* Notes Section Card */}
+      <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <View style={styles.cardHeader}>
+          <Text style={styles.cardIcon}>📝</Text>
+          <Text style={[styles.cardTitle, { color: colors.text }]}>Memo / Reference Notes</Text>
+        </View>
+        <CustomInput
+          placeholder="Enter payment terms, reference numbers or purchase conditions..."
+          value={notes}
+          onChangeText={setNotes}
+          multiline
+          numberOfLines={3}
+          style={styles.notesInput}
+        />
+      </View>
+
+      {/* Main Save / Navigation Controls */}
+      <View style={styles.actionSection}>
+        {errors.items ? (
+          <View
+            style={[
+              styles.errorContainer,
+              { backgroundColor: colors.errorLight, borderColor: colors.error },
+            ]}
+          >
+            <Text style={[styles.errorText, { color: colors.error }]}>
+              ⚠️ {errors.items}
+            </Text>
+          </View>
+        ) : null}
+
+        <CustomButton
+          title={isEditMode ? "💾 Update Purchase Invoice" : "💾 Save Purchase Invoice"}
+          onPress={handleSave}
+          loading={loading}
+          style={styles.saveBtn}
+        />
+        <CustomButton
+          title="Back to Supplier Reports"
+          onPress={() => navigation.navigate("SupplierReports" as never)}
+          variant="secondary"
+          style={styles.backBtn}
+        />
+      </View>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16 },
-  sectionTitle: { 
-    fontSize: 14, 
-    fontWeight: "800", 
-    marginTop: 12,
-    marginBottom: 12, 
-    textTransform: 'uppercase',
-    letterSpacing: 0.6,
+  container: {
+    flex: 1,
   },
-  itemRow: {
+  scrollContent: {
+    padding: 16,
+    paddingBottom: 40,
+  },
+  screenHeader: {
+    marginBottom: 20,
+    marginTop: 8,
+  },
+  screenTitle: {
+    fontSize: 22,
+    fontWeight: "800",
+    letterSpacing: -0.5,
+  },
+  screenSubtitle: {
+    fontSize: 13,
+    marginTop: 6,
+    lineHeight: 18,
+  },
+  card: {
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 1.5,
+  },
+  cardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 14,
+    gap: 8,
+  },
+  cardIcon: {
+    fontSize: 16,
+  },
+  cardTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  row: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  col: {
+    flex: 1,
+  },
+  disabledContainer: {
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 16,
+  },
+  disabledLabel: {
+    fontSize: 11,
+    fontWeight: "600",
+    marginBottom: 4,
+  },
+  disabledValue: {
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  disabledHint: {
+    fontSize: 11,
+    marginTop: 4,
+  },
+  stockBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+    alignSelf: "flex-start",
+    marginBottom: 14,
+  },
+  stockText: {
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  gridRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginTop: 2,
+  },
+  gridCol: {
+    flex: 1,
+  },
+  gridColLarge: {
+    flex: 1.25,
+  },
+  addProductBtn: {
+    marginTop: 4,
+  },
+  receiptCard: {
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1.5,
+    borderStyle: "dashed",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.02,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  receiptHeader: {
+    paddingBottom: 10,
+  },
+  receiptTitle: {
+    fontSize: 12,
+    fontWeight: "800",
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
+  },
+  receiptItemRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    borderWidth: 1,
-    borderRadius: 14,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.02,
-    shadowRadius: 3,
-    elevation: 1,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
   },
-  itemName: { fontSize: 15, fontWeight: "700" },
-  removeBtn: { minWidth: 90, marginTop: 0 },
-  errorText: { marginTop: 8, marginBottom: 8, fontSize: 12 },
-  totalText: { 
-    marginTop: 16, 
-    marginBottom: 16,
-    fontSize: 18, 
+  itemInfo: {
+    flex: 1,
+    paddingRight: 8,
+  },
+  itemName: {
+    fontSize: 14,
+    fontWeight: "700",
+    marginBottom: 3,
+  },
+  itemSubrow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  itemQtyPrice: {
+    fontSize: 12,
+  },
+  sellBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  sellBadgeText: {
+    fontSize: 10,
+    fontWeight: "700",
+  },
+  itemRightAction: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  itemTotalAmount: {
+    fontSize: 15,
     fontWeight: "800",
-    letterSpacing: -0.2,
+  },
+  itemDeleteBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  receiptTotalRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1.5,
+    borderStyle: "dashed",
+  },
+  receiptTotalLabel: {
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  receiptTotalValue: {
+    fontSize: 20,
+    fontWeight: "800",
+  },
+  notesInput: {
+    minHeight: 80,
+    textAlignVertical: "top",
+  },
+  actionSection: {
+    marginTop: 8,
+    gap: 12,
+  },
+  errorContainer: {
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 4,
+  },
+  errorText: {
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  saveBtn: {
+    paddingVertical: 15,
+  },
+  backBtn: {
+    paddingVertical: 14,
   },
 });

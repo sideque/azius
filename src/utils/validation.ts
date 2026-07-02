@@ -1,3 +1,5 @@
+import { Supplier } from "../types";
+
 export interface ValidationResult {
   isValid: boolean;
   errors: Record<string, string>;
@@ -91,24 +93,70 @@ export function validateShop(data: Record<string, string>): ValidationResult {
   return { isValid: Object.keys(errors).length === 0, errors };
 }
 
+// export function validateSupplier(
+//   data: Record<string, string>,
+// ): ValidationResult {
+//   const errors: Record<string, string> = {};
+//   console.log(items, "suiiiiiiiiiiiiiiiiiiiiiii");
+//   const supplierNameError = validateRequired(
+//     data.supplierName ?? "",
+//     "Supplier name",
+//   );
+//   if (supplierNameError) errors.supplierName = supplierNameError;
+//   const phoneErr = validatePhone(data.phoneNumber ?? "");
+//   if (phoneErr) errors.phoneNumber = phoneErr;
+//   const openingBalanceErr = validateNumber(
+//     data.openingBalance ?? "0",
+//     "Opening balance",
+//     0,
+//   );
+//   if (openingBalanceErr) errors.openingBalance = openingBalanceErr;
+//   return { isValid: Object.keys(errors).length === 0, errors };
+// }
+
 export function validateSupplier(
   data: Record<string, string>,
+  suppliers: Supplier[],
+  currentSupplierId?: string
 ): ValidationResult {
   const errors: Record<string, string> = {};
+
+  const supplierName = data.supplierName.trim();
+
   const supplierNameError = validateRequired(
-    data.supplierName ?? "",
-    "Supplier name",
+    supplierName,
+    "Supplier name"
   );
-  if (supplierNameError) errors.supplierName = supplierNameError;
+
+  if (supplierNameError) {
+    errors.supplierName = supplierNameError;
+  } else {
+    const duplicate = suppliers.find(
+      (supplier) =>
+        supplier.supplierName.trim().toLowerCase() ===
+          supplierName.toLowerCase() &&
+        supplier.id !== currentSupplierId
+    );
+
+    if (duplicate) {
+      errors.supplierName = "Supplier already exists";
+    }
+  }
+
   const phoneErr = validatePhone(data.phoneNumber ?? "");
   if (phoneErr) errors.phoneNumber = phoneErr;
+
   const openingBalanceErr = validateNumber(
     data.openingBalance ?? "0",
     "Opening balance",
-    0,
+    0
   );
   if (openingBalanceErr) errors.openingBalance = openingBalanceErr;
-  return { isValid: Object.keys(errors).length === 0, errors };
+
+  return {
+    isValid: Object.keys(errors).length === 0,
+    errors,
+  };
 }
 
 export function validatePayment(

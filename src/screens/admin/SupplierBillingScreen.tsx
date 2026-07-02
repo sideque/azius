@@ -83,21 +83,23 @@ export function SupplierBillingScreen() {
 
   const totalAmount = items.reduce((sum, item) => sum + item.total, 0);
 
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        const [supplierData, productData] = await Promise.all([
-          getSuppliers(),
-          getProducts(),
-        ]);
-        setSuppliers(supplierData);
-        setProducts(productData);
-      } catch (error) {
-        showToast("Failed to load billing data", "error");
-      }
-    };
-    loadData();
-  }, [showToast]);
+ const loadData = async () => {
+  try {
+    const [supplierData, productData] = await Promise.all([
+      getSuppliers(),
+      getProducts(),
+    ]);
+
+    setSuppliers(supplierData);
+    setProducts(productData);
+  } catch (error) {
+    showToast("Failed to load billing data", "error");
+  }
+};
+
+useEffect(() => {
+  loadData();
+}, []);
 
   useEffect(() => {
     const loadBill = async () => {
@@ -291,6 +293,7 @@ export function SupplierBillingScreen() {
       setBillDate(new Date());
       setSelectedSupplierId("");
       setSelectedProductId("");
+      loadData();
     } catch (error) {
       showToast("Failed to save supplier bill", "error");
       console.warn(error);

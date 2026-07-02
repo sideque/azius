@@ -170,6 +170,16 @@ export function ProductFormScreen() {
         showToast("Product created");
       }
       navigation.navigate("Products" as never);
+      setForm({
+    productName: "",
+    productCode: "",
+    category: "",
+    purchasePrice: "",
+    sellingPrice: "",
+    stockQuantity: "",
+    unit: "",
+    description: "",
+  })
     } catch (error) {
       showToast("Failed to save product", "error");
       console.warn(error);

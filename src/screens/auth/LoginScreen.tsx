@@ -83,7 +83,7 @@ export function LoginScreen({ navigation }: Props) {
       >
         <View style={[styles.header, { backgroundColor: colors.primary }]}>
           <View style={styles.logoCircle}>
-            <Text style={styles.logo}>SD</Text>
+            <Text style={styles.logo}>SM</Text>
           </View>
           <Text style={styles.headerTitle}>Welcome Back</Text>
           <Text style={styles.headerSub}>Sign in to your account</Text>

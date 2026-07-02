@@ -7,7 +7,9 @@ import {
   StyleSheet,
   Text,
   View,
+  Dimensions,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { CustomButton, CustomInput, useToast } from "../../components";
 import { authenticateUser, getDatabase } from "../../services/database";
@@ -17,14 +19,29 @@ import {
   loginStart,
   loginSuccess,
 } from "../../store/slices/authSlice";
-import { useTheme } from "../../theme/ThemeContext";
 import { validateLogin } from "../../utils/validation";
 import { AuthStackParamList } from "../../navigation/types";
 
 type Props = NativeStackScreenProps<AuthStackParamList, "Login">;
 
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
+const isSmallDevice = SCREEN_WIDTH < 360;
+const isTablet = SCREEN_WIDTH >= 768;
+
+// Premium green + gold palette (matches SplashScreen)
+const THEME = {
+  gradientStart: "#052E22",
+  gradientMid: "#0B7A5B",
+  gradientEnd: "#10A375",
+  gold: "#C9A24B",
+  surface: "#FFFFFF",
+  text: "#0F2A22",
+  textSecondary: "#5B7B70",
+  textMuted: "#8FA79D",
+  background: "#F4F9F7",
+};
+
 export function LoginScreen({ navigation }: Props) {
-  const { colors } = useTheme();
   const dispatch = useAppDispatch();
   const { showToast } = useToast();
   const [username, setUsername] = useState("");
@@ -74,43 +91,67 @@ export function LoginScreen({ navigation }: Props) {
 
   return (
     <KeyboardAvoidingView
-      style={[styles.container, { backgroundColor: colors.background }]}
+      style={styles.container}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       <ScrollView
         contentContainerStyle={styles.scroll}
         keyboardShouldPersistTaps="handled"
       >
-        <View style={[styles.header, { backgroundColor: colors.primary }]}>
-          <View style={styles.logoCircle}>
-            <Text style={styles.logo}>SM</Text>
+        <LinearGradient
+          colors={[THEME.gradientStart, THEME.gradientMid, THEME.gradientEnd]}
+          start={{ x: 0.1, y: 0 }}
+          end={{ x: 0.9, y: 1 }}
+          style={styles.header}
+        >
+          {/* decorative glow circles */}
+          <View style={styles.glowTop} />
+          <View style={styles.glowBottom} />
+
+          <View style={styles.logoRing}>
+            <LinearGradient
+              colors={["#FFFFFF", "#D9F2E6"]}
+              style={styles.logoCircle}
+            >
+              <Text style={styles.logo}>SM</Text>
+            </LinearGradient>
           </View>
           <Text style={styles.headerTitle}>Welcome Back</Text>
+          <View style={styles.headerDivider} />
           <Text style={styles.headerSub}>Sign in to your account</Text>
-        </View>
-        <View style={[styles.form, { backgroundColor: colors.surface }]}>
+        </LinearGradient>
+
+        <View style={styles.form}>
           <View style={styles.roleSwitcher}>
             <Pressable
               style={[
                 styles.roleButton,
-                { borderColor: colors.primary },
-                selectedRole === "admin" && { backgroundColor: colors.primary },
+                selectedRole === "admin" && styles.roleButtonActive,
               ]}
               onPress={() => setSelectedRole("admin")}
             >
-              <Text style={[styles.roleButtonText, { color: selectedRole === "admin" ? '#fff' : colors.textSecondary }]}>
+              <Text
+                style={[
+                  styles.roleButtonText,
+                  selectedRole === "admin" && styles.roleButtonTextActive,
+                ]}
+              >
                 🏢 Admin
               </Text>
             </Pressable>
             <Pressable
               style={[
                 styles.roleButton,
-                { borderColor: colors.primary },
-                selectedRole === "sales" && { backgroundColor: colors.primary },
+                selectedRole === "sales" && styles.roleButtonActive,
               ]}
               onPress={() => setSelectedRole("sales")}
             >
-              <Text style={[styles.roleButtonText, { color: selectedRole === "sales" ? '#fff' : colors.textSecondary }]}>
+              <Text
+                style={[
+                  styles.roleButtonText,
+                  selectedRole === "sales" && styles.roleButtonTextActive,
+                ]}
+              >
                 💼 Sales
               </Text>
             </Pressable>
@@ -139,18 +180,17 @@ export function LoginScreen({ navigation }: Props) {
             <View
               style={[
                 styles.checkbox,
-                {
-                  borderColor: colors.primary,
-                  backgroundColor: rememberMe ? colors.primary : "transparent",
-                },
+                rememberMe && styles.checkboxActive,
               ]}
             >
               {rememberMe && <Text style={styles.checkmark}>✓</Text>}
             </View>
-            <Text style={{ color: colors.text }}>Remember Me</Text>
+            <Text style={styles.rememberText}>Remember Me</Text>
           </Pressable>
+
           <CustomButton title="Login" onPress={handleLogin} loading={loading} />
-          <Text style={[styles.hint, { color: colors.textMuted }]}>
+
+          <Text style={styles.hint}>
             Demo:{" "}
             {selectedRole === "admin" ? "admin/admin123" : "sales/sales123"}
           </Text>
@@ -160,58 +200,151 @@ export function LoginScreen({ navigation }: Props) {
   );
 }
 
+const LOGO_SIZE = isTablet ? 90 : isSmallDevice ? 64 : 76;
+
 const styles = StyleSheet.create({
-  container: { flex: 1 },
+  container: { flex: 1, backgroundColor: THEME.background },
   scroll: { flexGrow: 1 },
+
   header: {
-    paddingTop: 80,
+    paddingTop: isTablet ? 100 : 70,
     paddingBottom: 50,
     paddingHorizontal: 24,
-    borderBottomLeftRadius: 32,
-    borderBottomRightRadius: 32,
+    borderBottomLeftRadius: 36,
+    borderBottomRightRadius: 36,
+    alignItems: "center",
+    overflow: "hidden",
+  },
+  glowTop: {
+    position: "absolute",
+    top: -SCREEN_WIDTH * 0.3,
+    right: -SCREEN_WIDTH * 0.25,
+    width: SCREEN_WIDTH * 0.7,
+    height: SCREEN_WIDTH * 0.7,
+    borderRadius: SCREEN_WIDTH * 0.35,
+    backgroundColor: "rgba(255,255,255,0.06)",
+  },
+  glowBottom: {
+    position: "absolute",
+    bottom: -SCREEN_WIDTH * 0.35,
+    left: -SCREEN_WIDTH * 0.3,
+    width: SCREEN_WIDTH * 0.8,
+    height: SCREEN_WIDTH * 0.8,
+    borderRadius: SCREEN_WIDTH * 0.4,
+    backgroundColor: "rgba(0,0,0,0.10)",
+  },
+
+  logoRing: {
+    width: LOGO_SIZE + 14,
+    height: LOGO_SIZE + 14,
+    borderRadius: (LOGO_SIZE + 14) / 2,
+    backgroundColor: "rgba(255,255,255,0.25)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 18,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 8,
   },
   logoCircle: {
-    width: 72,
-    height: 72,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
+    width: LOGO_SIZE,
+    height: LOGO_SIZE,
+    borderRadius: LOGO_SIZE / 2,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: THEME.gold,
   },
-  logo: { fontSize: 28, fontWeight: "800", color: "#fff" },
-  headerTitle: { fontSize: 26, fontWeight: "800", color: "#fff", letterSpacing: -0.5 },
-  headerSub: { fontSize: 14, color: "rgba(255,255,255,0.75)", marginTop: 4 },
+  logo: {
+    fontSize: LOGO_SIZE * 0.36,
+    fontWeight: "800",
+    color: THEME.gradientMid,
+    letterSpacing: 1,
+  },
+
+  headerTitle: {
+    fontSize: isTablet ? 32 : isSmallDevice ? 22 : 26,
+    fontWeight: "800",
+    color: "#fff",
+    letterSpacing: -0.5,
+    textAlign: "center",
+  },
+  headerDivider: {
+    width: 32,
+    height: 2,
+    backgroundColor: THEME.gold,
+    marginTop: 10,
+    marginBottom: 8,
+    borderRadius: 1,
+  },
+  headerSub: {
+    fontSize: isTablet ? 16 : 13,
+    color: "rgba(255,255,255,0.8)",
+    letterSpacing: 1,
+    textTransform: "uppercase",
+  },
+
   form: {
     margin: 20,
-    marginTop: -24,
-    borderRadius: 20,
+    marginTop: -28,
+    borderRadius: 22,
     padding: 24,
-    elevation: 6,
+    backgroundColor: THEME.surface,
+    elevation: 8,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
+    shadowOpacity: 0.12,
+    shadowRadius: 14,
   },
-  roleSwitcher: { flexDirection: "row", marginBottom: 20, gap: 8 },
+
+  roleSwitcher: { flexDirection: "row", marginBottom: 20, gap: 10 },
   roleButton: {
     flex: 1,
     borderWidth: 1.5,
+    borderColor: THEME.gradientMid,
     borderRadius: 12,
     paddingVertical: 11,
     alignItems: "center",
+    backgroundColor: "transparent",
   },
-  roleButtonText: { fontWeight: "700", fontSize: 13 },
+  roleButtonActive: {
+    backgroundColor: THEME.gradientMid,
+    borderColor: THEME.gold,
+  },
+  roleButtonText: {
+    fontWeight: "700",
+    fontSize: 13,
+    color: THEME.textSecondary,
+  },
+  roleButtonTextActive: {
+    color: "#fff",
+  },
+
   remember: { flexDirection: "row", alignItems: "center", marginBottom: 20 },
   checkbox: {
     width: 22,
     height: 22,
     borderRadius: 6,
     borderWidth: 2,
+    borderColor: THEME.gradientMid,
     marginRight: 10,
     alignItems: "center",
     justifyContent: "center",
+    backgroundColor: "transparent",
+  },
+  checkboxActive: {
+    backgroundColor: THEME.gold,
+    borderColor: THEME.gold,
   },
   checkmark: { color: "#fff", fontSize: 14, fontWeight: "700" },
-  hint: { textAlign: "center", marginTop: 16, fontSize: 12 },
+  rememberText: { color: THEME.text, fontSize: 14 },
+
+  hint: {
+    textAlign: "center",
+    marginTop: 16,
+    fontSize: 12,
+    color: THEME.textMuted,
+  },
 });

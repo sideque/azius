@@ -15,7 +15,7 @@ export type AdminDrawerParamList = {
   Suppliers: undefined;
   SupplierForm: { supplierId?: string };
   SupplierReports: undefined;
-  SupplierPayments: undefined;
+  SupplierPayments: { paymentId?: string } | undefined;
   SupplierBilling: { billId?: string } | undefined;
   Reports: undefined;
   Notifications: undefined;

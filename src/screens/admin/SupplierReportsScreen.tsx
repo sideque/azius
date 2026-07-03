@@ -469,6 +469,7 @@ import {
 import { useTheme } from "../../theme/ThemeContext";
 import {
   deleteSupplierBill,
+  deleteSupplierPayment,
   getSupplierBills,
   getSupplierPayments,
   getSuppliers,
@@ -600,6 +601,32 @@ export function SupplierReportsScreen() {
               await loadReport();
             } catch (error) {
               showToast("Failed to delete supplier bill", "error");
+            } finally {
+              setLoading(false);
+            }
+          },
+        },
+      ],
+    );
+  };
+
+  const confirmDeletePayment = (paymentId: string) => {
+    Alert.alert(
+      "Delete Supplier Payment",
+      "Are you sure you want to delete this payment? This will update the supplier outstanding balance.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            setLoading(true);
+            try {
+              await deleteSupplierPayment(paymentId);
+              showToast("Supplier payment deleted");
+              await loadReport();
+            } catch (error) {
+              showToast("Failed to delete supplier payment", "error");
             } finally {
               setLoading(false);
             }
@@ -872,6 +899,12 @@ export function SupplierReportsScreen() {
                   title="Edit"
                   onPress={() => handleEditPayment(item.id)}
                   variant="secondary"
+                  style={styles.ledgerActionBtn}
+                />
+                <CustomButton
+                  title="Delete"
+                  onPress={() => confirmDeletePayment(item.id)}
+                  variant="danger"
                   style={styles.ledgerActionBtn}
                 />
               </View>

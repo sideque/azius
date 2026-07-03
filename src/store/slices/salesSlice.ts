@@ -197,6 +197,17 @@ const salesSlice = createSlice({
       }
       state.cartSyncVersion += 1;
     },
+    updateCartRate: (
+      state,
+      action: PayloadAction<{ productId: string; rate: number }>,
+    ) => {
+      const item = state.cart.find(
+        (c) => c.productId === action.payload.productId,
+      );
+      if (!item) return;
+      item.rate = Math.max(0, action.payload.rate);
+      state.cartSyncVersion += 1;
+    },
     removeFromCart: (state, action: PayloadAction<string>) => {
       state.cart = state.cart.filter((c) => c.productId !== action.payload);
       state.cartSyncVersion += 1;
@@ -265,6 +276,7 @@ export const {
   setSelectedShop,
   addToCart,
   updateCartQuantity,
+  updateCartRate,
   removeFromCart,
   setDiscount,
   clearCart,

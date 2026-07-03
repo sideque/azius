@@ -106,17 +106,17 @@ export function DashboardScreen() {
           value={formatCurrency(stats?.salesYear ?? 0)}
         />
         <DashboardCard
-          title="Profit Today"
+          title="Net Profit Today"
           value={formatCurrency(stats?.profitToday ?? 0)}
           color={colors.success}
         />
         <DashboardCard
-          title="Profit This Month"
+          title="Net Profit Month"
           value={formatCurrency(stats?.profitMonth ?? 0)}
           color={colors.success}
         />
         <DashboardCard
-          title="Profit This Year"
+          title="Net Profit Year"
           value={formatCurrency(stats?.profitYear ?? 0)}
           color={colors.success}
         />
@@ -129,6 +129,21 @@ export function DashboardScreen() {
           title="Payments Collected"
           value={formatCurrency(stats?.paymentsCollected ?? 0)}
           color={colors.secondary}
+        />
+        <DashboardCard
+          title="Expenses Today"
+          value={formatCurrency(stats?.expensesToday ?? 0)}
+          color={colors.error}
+        />
+        <DashboardCard
+          title="Expenses This Month"
+          value={formatCurrency(stats?.expensesMonth ?? 0)}
+          color={colors.error}
+        />
+        <DashboardCard
+          title="Expenses This Year"
+          value={formatCurrency(stats?.expensesYear ?? 0)}
+          color={colors.error}
         />
       </View>
 
@@ -265,17 +280,17 @@ export function DashboardScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16 },
-  section: { 
-    fontSize: 16, 
-    fontWeight: "800", 
-    marginTop: 24, 
-    marginBottom: 12, 
-    textTransform: 'uppercase', 
+  section: {
+    fontSize: 16,
+    fontWeight: "800",
+    marginTop: 24,
+    marginBottom: 12,
+    textTransform: 'uppercase',
     letterSpacing: 0.8,
   },
   grid: { flexDirection: "row", flexWrap: "wrap", marginHorizontal: -4, marginBottom: 12 },
-  chart: { 
-    borderRadius: 16, 
+  chart: {
+    borderRadius: 16,
     marginBottom: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },

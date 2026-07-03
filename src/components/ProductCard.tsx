@@ -13,7 +13,7 @@ interface Props {
 
 export function ProductCard({ product, onPress, onAdd, showStock = true }: Props) {
   const { colors } = useTheme();
-  const lowStock = product.stockQuantity <= 20;
+  const lowStock = product.stockQuantity <= (product.minStock ?? 20);
 
   return (
     <Pressable

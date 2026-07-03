@@ -1841,6 +1841,7 @@ const supplierPaymentsCollection = collection(db, "supplier_payments");
 const supplierBillsCollection = collection(db, "supplier_bills");
 const ledgersCollection = collection(db, "ledgers");
 const cartsCollection = collection(db, "carts");
+const expensesCollection = collection(db, "expenses");
 
 let initialized = false;
 
@@ -2155,6 +2156,8 @@ export async function updateProduct(
     payload.sellingPrice = product.sellingPrice;
   if (product.stockQuantity !== undefined)
     payload.stockQuantity = product.stockQuantity;
+  if (product.minStock !== undefined)
+    payload.minStock = product.minStock;
   if (product.unit !== undefined) payload.unit = product.unit;
   if (product.supplierId !== undefined) payload.supplierId = product.supplierId;
   if (product.supplierName !== undefined)
@@ -2808,7 +2811,7 @@ export async function createSale(
       (sum, item) =>
         sum +
         (Number(item.rate) - Number(item.purchasePrice)) *
-          Number(item.quantity),
+        Number(item.quantity),
       0,
     );
     const profit =
@@ -2900,7 +2903,7 @@ export async function createSale(
       (sum, item) =>
         sum +
         (item.rate - (productSnapshotMap[item.productId]?.purchasePrice ?? 0)) *
-          item.quantity,
+        item.quantity,
       0,
     ),
     createdAt,
@@ -3025,6 +3028,7 @@ export async function getSales(
   shopId?: string,
 ): Promise<SaleWithDetails[]> {
   const sales = await getRecentSales(100);
+  console.log("HI", sales)
 
   return sales.filter((sale) => {
     let ok = true;
@@ -3147,11 +3151,12 @@ export async function createPayment(
 }
 
 export async function getDashboardStats(): Promise<DashboardStats> {
-  const [shops, products, sales, payments] = await Promise.all([
+  const [shops, products, sales, payments, expenses] = await Promise.all([
     getShops(),
     getProducts(),
     getRecentSales(100),
     getPayments(),
+    getExpenses(),
   ]);
 
   const now = new Date();
@@ -3187,6 +3192,23 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     }
   }
 
+  let expensesToday = 0;
+  let expensesMonth = 0;
+  let expensesYear = 0;
+
+  for (const exp of expenses) {
+    const expDate = exp.expenseDate;
+    if (expDate.startsWith(year)) {
+      expensesYear += exp.amount;
+    }
+    if (expDate.startsWith(month)) {
+      expensesMonth += exp.amount;
+    }
+    if (expDate.startsWith(today)) {
+      expensesToday += exp.amount;
+    }
+  }
+
   const outstandingBalance = shops.reduce(
     (sum, shop) => sum + (shop.outstandingBalance ?? 0),
     0,
@@ -3203,11 +3225,14 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     salesToday,
     salesMonth,
     salesYear,
-    profitToday,
-    profitMonth,
-    profitYear,
+    profitToday: profitToday - expensesToday,
+    profitMonth: profitMonth - expensesMonth,
+    profitYear: profitYear - expensesYear,
     outstandingBalance,
     paymentsCollected,
+    expensesToday,
+    expensesMonth,
+    expensesYear,
   };
 }
 
@@ -3645,4 +3670,43 @@ export async function getLedgerEntries(
   }
 
   return entries.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}
+
+export async function getExpenses(
+  startDate?: string,
+  endDate?: string,
+): Promise<Expense[]> {
+  const snapshot = await getDocs(expensesCollection);
+  let list = snapshot.docs.map(mapDoc<Expense>);
+  if (startDate) {
+    list = list.filter((e) => e.expenseDate >= startDate);
+  }
+  if (endDate) {
+    list = list.filter((e) => e.expenseDate <= endDate);
+  }
+  return list.sort((a, b) => b.expenseDate.localeCompare(a.expenseDate));
+}
+
+export async function createExpense(
+  category: string,
+  amount: number,
+  notes: string,
+  expenseDate: string,
+): Promise<Expense> {
+  const id = generateId();
+  const createdAt = toISOString();
+  const data = {
+    id,
+    category,
+    amount,
+    notes,
+    expenseDate,
+    createdAt,
+  };
+  await setDoc(doc(expensesCollection, id), data);
+  return data;
+}
+
+export async function deleteExpense(id: string): Promise<void> {
+  await deleteDoc(doc(expensesCollection, id));
 }

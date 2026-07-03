@@ -37,10 +37,11 @@ import {
   setSelectedShop,
   syncCartToFirebase,
   updateCartQuantity,
+  updateCartRate,
 } from "../../store/slices/salesSlice";
 import { useTheme } from "../../theme/ThemeContext";
 import { formatCurrency, formatDateTime } from "../../utils/formatters";
-import { Product, SaleWithDetails } from "../../types";
+import { CartItem, Product, SaleWithDetails } from "../../types";
 
 export function CreateSaleScreen() {
   const { colors } = useTheme();
@@ -66,6 +67,9 @@ export function CreateSaleScreen() {
   const [pendingInvoice, setPendingInvoice] = useState<SaleWithDetails | null>(
     null,
   );
+  const [showPriceModal, setShowPriceModal] = useState(false);
+  const [pendingPriceItem, setPendingPriceItem] = useState<CartItem | null>(null);
+  const [priceInput, setPriceInput] = useState("");
 
   const load = useCallback(() => {
     dispatch(fetchProducts());
@@ -121,6 +125,34 @@ export function CreateSaleScreen() {
     setPendingProduct(product);
     setQuantityInput("1");
     setShowQuantityModal(true);
+  };
+
+  const handlePromptPrice = (item: CartItem) => {
+    setPendingPriceItem(item);
+    setPriceInput(item.rate.toString());
+    setShowPriceModal(true);
+  };
+
+  const handleUpdatePrice = () => {
+    if (!pendingPriceItem) return;
+    const rate = Number.parseFloat(priceInput);
+    if (!Number.isFinite(rate) || rate < 0) {
+      showToast("Please enter a valid price", "error");
+      return;
+    }
+    dispatch(
+      updateCartRate({
+        productId: pendingPriceItem.productId,
+        rate,
+      }),
+    );
+    if (user?.id) {
+      dispatch(syncCartToFirebase());
+    }
+    showToast(`Price updated for ${pendingPriceItem.productName}`);
+    setShowPriceModal(false);
+    setPendingPriceItem(null);
+    setPriceInput("");
   };
 
   const handleAddProduct = () => {
@@ -537,12 +569,20 @@ export function CreateSaleScreen() {
               style={[styles.cartItem, { borderColor: colors.border }]}
             >
               <View style={{ flex: 1 }}>
-                <Text style={{ color: colors.text, fontWeight: "600" }}>
+                <Text style={{ color: colors.text, fontWeight: "600" }} numberOfLines={2}>
                   {item.productName}
                 </Text>
-                <Text style={{ color: colors.textSecondary }}>
-                  {formatCurrency(item.rate)}/{item.unit}
+                <Text style={{ color: colors.textSecondary, fontSize: 13, marginTop: 2 }}>
+                  {item.quantity} {item.unit || "unit"} × {formatCurrency(item.rate)} = {formatCurrency(item.quantity * item.rate)}
                 </Text>
+                <Pressable
+                  onPress={() => handlePromptPrice(item)}
+                  style={{ marginTop: 4, alignSelf: "flex-start" }}
+                >
+                  <Text style={{ color: colors.primary, fontSize: 12, fontWeight: "700" }}>
+                    ✏️ Edit Price
+                  </Text>
+                </Pressable>
               </View>
               <View style={styles.qtyRow}>
                 <Pressable
@@ -660,6 +700,32 @@ export function CreateSaleScreen() {
         <CustomButton
           title="Add to Cart"
           onPress={handleAddProduct}
+          style={{ marginTop: 8 }}
+        />
+      </Modal>
+
+      <Modal
+        visible={showPriceModal}
+        title="Edit Item Price"
+        onClose={() => {
+          setShowPriceModal(false);
+          setPendingPriceItem(null);
+          setPriceInput("");
+        }}
+      >
+        <Text style={{ color: colors.text, fontWeight: "600", marginBottom: 12 }}>
+          {pendingPriceItem?.productName}
+        </Text>
+        <CustomInput
+          label="Price per unit (₹)"
+          value={priceInput}
+          onChangeText={setPriceInput}
+          keyboardType="decimal-pad"
+          placeholder="e.g. 100"
+        />
+        <CustomButton
+          title="Update Price"
+          onPress={handleUpdatePrice}
           style={{ marginTop: 8 }}
         />
       </Modal>

@@ -18,6 +18,7 @@ import { EditSaleScreen } from "../screens/admin/EditSaleScreen";
 import { CustomDrawerContent } from "./CustomDrawerContent";
 import { useTheme } from "../theme/ThemeContext";
 import { ReportsScreen } from "../screens/admin/ReportsScreen";
+import { ExpensesScreen } from "../screens/admin/ExpensesScreen";
 
 const Drawer = createDrawerNavigator<AdminDrawerParamList>();
 
@@ -88,6 +89,11 @@ export function AdminNavigator() {
         name="Reports"
         component={ReportsScreen}
         options={{ title: "Reports" }}
+      />
+      <Drawer.Screen
+        name="Expenses"
+        component={ExpensesScreen}
+        options={{ title: "Expenses" }}
       />
       <Drawer.Screen
         name="Notifications"

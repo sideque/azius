@@ -56,7 +56,7 @@ export function validateProduct(
     const err = validateRequired(data[key] ?? "", label);
     if (err) errors[key] = err;
   });
-  ["purchasePrice", "sellingPrice", "stockQuantity"].forEach((key) => {
+  ["purchasePrice", "sellingPrice", "stockQuantity", "minStock"].forEach((key) => {
     const label = key.replace(/([A-Z])/g, " $1").trim();
     const err = validateNumber(
       data[key] ?? "",

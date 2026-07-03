@@ -58,13 +58,18 @@ export function InvoiceCard({
       <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
       {sale.items.map((item) => (
-        <View key={item.id} style={styles.itemRow}>
-          <Text style={[styles.itemName, { color: colors.textSecondary }]} numberOfLines={1}>
-            {item.productName} × {item.quantity}
+        <View key={item.id} style={{ marginBottom: 8 }}>
+          <Text style={[styles.itemName, { color: colors.text, fontWeight: "600" }]}>
+            {item.productName}
           </Text>
-          <Text style={[styles.itemTotal, { color: colors.text }]}>
-            {formatCurrency(item.total)}
-          </Text>
+          <View style={styles.itemRow}>
+            <Text style={{ color: colors.textSecondary, fontSize: 12, marginTop: 2 }}>
+              {item.quantity} × {formatCurrency(item.rate)}
+            </Text>
+            <Text style={[styles.itemTotal, { color: colors.text }]}>
+              {formatCurrency(item.total)}
+            </Text>
+          </View>
         </View>
       ))}
 

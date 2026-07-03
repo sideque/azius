@@ -34,6 +34,7 @@ export function ProductFormScreen() {
     purchasePrice: "",
     sellingPrice: "",
     stockQuantity: "",
+    minStock: "20",
     unit: "",
     description: "",
   });
@@ -51,6 +52,7 @@ export function ProductFormScreen() {
       purchasePrice: "",
       sellingPrice: "",
       stockQuantity: "",
+      minStock: "20",
       unit: "",
       description: "",
     };
@@ -99,6 +101,7 @@ export function ProductFormScreen() {
             purchasePrice: String(p.purchasePrice),
             sellingPrice: String(p.sellingPrice),
             stockQuantity: String(p.stockQuantity),
+            minStock: p.minStock !== undefined ? String(p.minStock) : "20",
             unit: p.unit,
             description: p.description,
           });
@@ -157,6 +160,7 @@ export function ProductFormScreen() {
       purchasePrice: parseFloat(form.purchasePrice),
       sellingPrice: parseFloat(form.sellingPrice),
       stockQuantity: parseFloat(form.stockQuantity),
+      minStock: parseFloat(form.minStock),
       unit: form.unit.trim(),
       description: form.description.trim(),
     };
@@ -171,15 +175,16 @@ export function ProductFormScreen() {
       }
       navigation.navigate("Products" as never);
       setForm({
-    productName: "",
-    productCode: "",
-    category: "",
-    purchasePrice: "",
-    sellingPrice: "",
-    stockQuantity: "",
-    unit: "",
-    description: "",
-  })
+        productName: "",
+        productCode: "",
+        category: "",
+        purchasePrice: "",
+        sellingPrice: "",
+        stockQuantity: "",
+        minStock: "20",
+        unit: "",
+        description: "",
+      });
     } catch (error) {
       showToast("Failed to save product", "error");
       console.warn(error);
@@ -233,6 +238,13 @@ export function ProductFormScreen() {
         onChangeText={(v) => update("stockQuantity", v)}
         keyboardType="decimal-pad"
         error={errors.stockQuantity}
+      />
+      <CustomInput
+        label="Minimum Stock (for low stock alert)"
+        value={form.minStock}
+        onChangeText={(v) => update("minStock", v)}
+        keyboardType="decimal-pad"
+        error={errors.minStock}
       />
       <Dropdown
         label="Unit"

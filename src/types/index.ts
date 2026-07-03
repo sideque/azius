@@ -17,6 +17,7 @@ export interface Product {
   purchasePrice: number;
   sellingPrice: number;
   stockQuantity: number;
+  minStock?: number;
   unit: string;
   description: string;
   supplierId?: string;
@@ -156,6 +157,18 @@ export interface DashboardStats {
   profitYear: number;
   outstandingBalance: number;
   paymentsCollected: number;
+  expensesToday?: number;
+  expensesMonth?: number;
+  expensesYear?: number;
+}
+
+export interface Expense {
+  id: string;
+  category: string;
+  amount: number;
+  notes: string;
+  expenseDate: string;
+  createdAt: string;
 }
 
 export interface NotificationItem {

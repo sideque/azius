@@ -22,6 +22,7 @@ import { useTheme } from "../../theme/ThemeContext";
 import { Product, Supplier, SupplierBillItem } from "../../types";
 import { toISOString } from "../../utils/formatters";
 import { AdminDrawerParamList } from "../../navigation/types";
+import { RefreshControl } from "react-native-gesture-handler";
 
 export function SupplierBillingScreen() {
   const { colors } = useTheme();
@@ -41,6 +42,7 @@ export function SupplierBillingScreen() {
   const [originalItems, setOriginalItems] = useState<SupplierBillItem[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   const route = useRoute<RouteProp<AdminDrawerParamList, "SupplierBilling">>();
   const billId = route.params?.billId;
@@ -83,23 +85,57 @@ export function SupplierBillingScreen() {
 
   const totalAmount = items.reduce((sum, item) => sum + item.total, 0);
 
- const loadData = async () => {
-  try {
-    const [supplierData, productData] = await Promise.all([
-      getSuppliers(),
-      getProducts(),
-    ]);
+  const loadData = async () => {
+    try {
+      const [supplierData, productData] = await Promise.all([
+        getSuppliers(),
+        getProducts(),
+      ]);
 
-    setSuppliers(supplierData);
-    setProducts(productData);
-  } catch (error) {
-    showToast("Failed to load billing data", "error");
-  }
-};
+      setSuppliers(supplierData);
+      setProducts(productData);
+    } catch (error) {
+      showToast("Failed to load billing data", "error");
+    }
+  };
 
-useEffect(() => {
-  loadData();
-}, []);
+  const onRefresh = async () => {
+    setRefreshing(true);
+
+    try {
+      await loadData();
+
+      if (billId) {
+        const bill = await getSupplierBill(billId);
+
+        if (bill) {
+          const normalizedItems = bill.items.map((item) => ({
+            ...item,
+            purchasePrice: Number(item.purchasePrice ?? 0),
+            sellingPrice: Number(item.sellingPrice ?? item.purchasePrice ?? 0),
+            quantity: Number(item.quantity ?? 0),
+            total: Number(item.total ?? 0),
+          }));
+
+          setSelectedSupplierId(bill.supplierId);
+          setBillDate(new Date(bill.billDate));
+          setNotes(bill.notes);
+          setItems(normalizedItems);
+          setOriginalItems(normalizedItems);
+        }
+      }
+
+      showToast("Data refreshed");
+    } catch (error) {
+      showToast("Failed to refresh", "error");
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
 
   useEffect(() => {
     const loadBill = async () => {
@@ -150,8 +186,7 @@ useEffect(() => {
     const nextErrors: Record<string, string> = {};
 
     if (!selectedProductId) nextErrors.product = "Please select a product";
-    if (isNaN(qty) || qty <= 0)
-      nextErrors.quantity = "Qty must be > 0";
+    if (isNaN(qty) || qty <= 0) nextErrors.quantity = "Qty must be > 0";
     const sellPrice = parseFloat(sellingPrice);
     if (isNaN(price) || price <= 0)
       nextErrors.purchasePrice = "Purchase price must be > 0";
@@ -303,10 +338,23 @@ useEffect(() => {
   };
 
   return (
+    // <ScrollView
+    //   style={[styles.container, { backgroundColor: colors.background }]}
+    //   contentContainerStyle={styles.scrollContent}
+    //   keyboardShouldPersistTaps="handled"
+    // >
     <ScrollView
       style={[styles.container, { backgroundColor: colors.background }]}
       contentContainerStyle={styles.scrollContent}
       keyboardShouldPersistTaps="handled"
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          colors={[colors.primary]} // Android
+          tintColor={colors.primary} // iOS
+        />
+      }
     >
       {/* Screen Header Banner */}
       <View style={styles.screenHeader}>
@@ -321,20 +369,32 @@ useEffect(() => {
       </View>
 
       {/* Invoice Details Card */}
-      <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+      <View
+        style={[
+          styles.card,
+          { backgroundColor: colors.card, borderColor: colors.border },
+        ]}
+      >
         <View style={styles.cardHeader}>
           <Text style={styles.cardIcon}>📄</Text>
-          <Text style={[styles.cardTitle, { color: colors.text }]}>Invoice Metadata</Text>
+          <Text style={[styles.cardTitle, { color: colors.text }]}>
+            Invoice Metadata
+          </Text>
         </View>
 
         {isEditMode ? (
           <View
             style={[
               styles.disabledContainer,
-              { backgroundColor: colors.background, borderColor: colors.border },
+              {
+                backgroundColor: colors.background,
+                borderColor: colors.border,
+              },
             ]}
           >
-            <Text style={[styles.disabledLabel, { color: colors.textSecondary }]}>
+            <Text
+              style={[styles.disabledLabel, { color: colors.textSecondary }]}
+            >
               Supplier
             </Text>
             <Text style={[styles.disabledValue, { color: colors.text }]}>
@@ -353,7 +413,12 @@ useEffect(() => {
           />
         )}
         {errors.supplierId ? (
-          <Text style={[styles.errorText, { color: colors.error, marginBottom: 12 }]}>
+          <Text
+            style={[
+              styles.errorText,
+              { color: colors.error, marginBottom: 12 },
+            ]}
+          >
             {errors.supplierId}
           </Text>
         ) : null}
@@ -379,10 +444,17 @@ useEffect(() => {
       </View>
 
       {/* Add Products Card */}
-      <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+      <View
+        style={[
+          styles.card,
+          { backgroundColor: colors.card, borderColor: colors.border },
+        ]}
+      >
         <View style={styles.cardHeader}>
           <Text style={styles.cardIcon}>🛍️</Text>
-          <Text style={[styles.cardTitle, { color: colors.text }]}>Quick Add Product</Text>
+          <Text style={[styles.cardTitle, { color: colors.text }]}>
+            Quick Add Product
+          </Text>
         </View>
 
         <Dropdown
@@ -392,13 +464,20 @@ useEffect(() => {
           onChange={setSelectedProductId}
         />
         {errors.product ? (
-          <Text style={[styles.errorText, { color: colors.error, marginBottom: 12 }]}>
+          <Text
+            style={[
+              styles.errorText,
+              { color: colors.error, marginBottom: 12 },
+            ]}
+          >
             {errors.product}
           </Text>
         ) : null}
 
         {selectedProduct && (
-          <View style={[styles.stockBadge, { backgroundColor: colors.infoLight }]}>
+          <View
+            style={[styles.stockBadge, { backgroundColor: colors.infoLight }]}
+          >
             <Text style={[styles.stockText, { color: colors.info }]}>
               📦 Stock Available: {selectedProduct.stockQuantity} units
             </Text>
@@ -456,7 +535,9 @@ useEffect(() => {
           ]}
         >
           <View style={styles.receiptHeader}>
-            <Text style={[styles.receiptTitle, { color: colors.textSecondary }]}>
+            <Text
+              style={[styles.receiptTitle, { color: colors.textSecondary }]}
+            >
               🧾 Invoice Items ({items.length})
             </Text>
           </View>
@@ -464,18 +545,39 @@ useEffect(() => {
           {items.map((item) => (
             <View
               key={item.id}
-              style={[styles.receiptItemRow, { borderBottomColor: colors.border }]}
+              style={[
+                styles.receiptItemRow,
+                { borderBottomColor: colors.border },
+              ]}
             >
               <View style={styles.itemInfo}>
-                <Text style={[styles.itemName, { color: colors.text }]} numberOfLines={1}>
+                <Text
+                  style={[styles.itemName, { color: colors.text }]}
+                  numberOfLines={1}
+                >
                   {item.productName}
                 </Text>
                 <View style={styles.itemSubrow}>
-                  <Text style={[styles.itemQtyPrice, { color: colors.textSecondary }]}>
+                  <Text
+                    style={[
+                      styles.itemQtyPrice,
+                      { color: colors.textSecondary },
+                    ]}
+                  >
                     {item.quantity} × ₹{item.purchasePrice.toFixed(2)}
                   </Text>
-                  <View style={[styles.sellBadge, { backgroundColor: colors.secondaryLight }]}>
-                    <Text style={[styles.sellBadgeText, { color: colors.secondary }]}>
+                  <View
+                    style={[
+                      styles.sellBadge,
+                      { backgroundColor: colors.secondaryLight },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.sellBadgeText,
+                        { color: colors.secondary },
+                      ]}
+                    >
                       Sell: ₹{item.sellingPrice.toFixed(2)}
                     </Text>
                   </View>
@@ -494,7 +596,13 @@ useEffect(() => {
                     pressed && { opacity: 0.7 },
                   ]}
                 >
-                  <Text style={{ color: colors.error, fontSize: 13, fontWeight: "700" }}>
+                  <Text
+                    style={{
+                      color: colors.error,
+                      fontSize: 13,
+                      fontWeight: "700",
+                    }}
+                  >
                     ✕
                   </Text>
                 </Pressable>
@@ -503,8 +611,15 @@ useEffect(() => {
           ))}
 
           {/* Receipt Dashed Total Summary */}
-          <View style={[styles.receiptTotalRow, { borderTopColor: colors.border }]}>
-            <Text style={[styles.receiptTotalLabel, { color: colors.textSecondary }]}>
+          <View
+            style={[styles.receiptTotalRow, { borderTopColor: colors.border }]}
+          >
+            <Text
+              style={[
+                styles.receiptTotalLabel,
+                { color: colors.textSecondary },
+              ]}
+            >
               Total Amount
             </Text>
             <Text style={[styles.receiptTotalValue, { color: colors.primary }]}>
@@ -521,10 +636,17 @@ useEffect(() => {
       )}
 
       {/* Notes Section Card */}
-      <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+      <View
+        style={[
+          styles.card,
+          { backgroundColor: colors.card, borderColor: colors.border },
+        ]}
+      >
         <View style={styles.cardHeader}>
           <Text style={styles.cardIcon}>📝</Text>
-          <Text style={[styles.cardTitle, { color: colors.text }]}>Memo / Reference Notes</Text>
+          <Text style={[styles.cardTitle, { color: colors.text }]}>
+            Memo / Reference Notes
+          </Text>
         </View>
         <CustomInput
           placeholder="Enter payment terms, reference numbers or purchase conditions..."
@@ -552,7 +674,11 @@ useEffect(() => {
         ) : null}
 
         <CustomButton
-          title={isEditMode ? "💾 Update Purchase Invoice" : "💾 Save Purchase Invoice"}
+          title={
+            isEditMode
+              ? "💾 Update Purchase Invoice"
+              : "💾 Save Purchase Invoice"
+          }
           onPress={handleSave}
           loading={loading}
           style={styles.saveBtn}

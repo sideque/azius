@@ -151,22 +151,33 @@ export function ExpensesScreen() {
 
   /* ── delete ── */
   const handleDelete = (expense: Expense) => {
+    // mark as pending so UI shows loading state while confirmation is active
+    setDeletingId(expense.id);
     Alert.alert(
       "Delete Expense",
       `Delete ${formatCurrency(expense.amount)} (${expense.category}) expense?`,
       [
-        { text: "Cancel", style: "cancel" },
+        {
+          text: "Cancel",
+          style: "cancel",
+          onPress: () => setDeletingId(null),
+        },
         {
           text: "Delete",
           style: "destructive",
           onPress: async () => {
             try {
-              setDeletingId(expense.id);
+              // optimistic remove from UI
+              setExpenses((prev) => prev.filter((p) => p.id !== expense.id));
               await deleteExpense(expense.id);
               showToast("Expense deleted", "success");
+              // ensure sync with server
               await loadExpenses();
             } catch {
+              console.error("Failed to delete expense", expense.id);
               showToast("Failed to delete expense", "error");
+              // reload to restore removed item
+              await loadExpenses();
             } finally {
               setDeletingId(null);
             }

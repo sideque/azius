@@ -266,7 +266,12 @@ export function EditSaleScreen() {
         title="Update Sale"
         onPress={handleSave}
         loading={saving}
-        style={{ marginTop: 16, marginBottom: 40 }}
+        style={{ marginTop: 16 }}
+      />
+      <CustomButton
+        title="Back"
+        onPress={() => navigation.navigate("Reports", { initialTab: "Ledger" })}
+        style={{ marginTop: 12 }}
       />
       <Modal
         visible={!!editingItem}
@@ -347,23 +352,23 @@ export function EditSaleScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16 },
-  infoCard: { 
-    padding: 16, 
-    borderRadius: 14, 
-    marginBottom: 20, 
+  infoCard: {
+    padding: 16,
+    borderRadius: 14,
+    marginBottom: 20,
     borderWidth: 1,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
     shadowRadius: 6,
     elevation: 2,
   },
-  sectionTitle: { 
-    fontSize: 14, 
-    fontWeight: "800", 
+  sectionTitle: {
+    fontSize: 14,
+    fontWeight: "800",
     marginTop: 12,
     marginBottom: 12,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
     letterSpacing: 0.6,
   },
   itemCard: {
@@ -373,7 +378,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     marginBottom: 8,
     alignItems: "center",
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.02,
     shadowRadius: 3,
@@ -386,12 +391,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  summary: { 
-    padding: 16, 
-    borderRadius: 14, 
-    borderWidth: 1, 
+  summary: {
+    padding: 16,
+    borderRadius: 14,
+    borderWidth: 1,
     marginTop: 20,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
     shadowRadius: 6,

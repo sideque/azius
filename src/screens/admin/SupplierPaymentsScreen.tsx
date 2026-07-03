@@ -13,6 +13,7 @@ import { createSupplierPayment, getSuppliers } from "../../services/database";
 import { PaymentMethod, Supplier } from "../../types";
 import { formatCurrency, toISOString } from "../../utils/formatters";
 import { validatePayment } from "../../utils/validation";
+import { useRoute } from "@react-navigation/native";
 
 const PAYMENT_METHODS: { label: string; value: PaymentMethod }[] = [
   { label: "Cash", value: "Cash" },
@@ -37,7 +38,6 @@ export function SupplierPaymentsScreen() {
     () => suppliers.find((supplier) => supplier.id === supplierId),
     [supplierId, suppliers],
   );
-
   const loadSuppliers = async () => {
     try {
       const data = await getSuppliers();
@@ -183,7 +183,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     marginVertical: 16,
     borderWidth: 1,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
     shadowRadius: 6,

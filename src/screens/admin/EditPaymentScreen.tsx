@@ -172,18 +172,23 @@ export function EditPaymentScreen() {
         onPress={handleSave}
         loading={saving}
       />
+      <CustomButton
+        title="Back"
+        onPress={() => navigation.navigate("Reports", { initialTab: "Ledger" })}
+        style={{ marginTop: 12 }}
+      />
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16 },
-  infoCard: { 
-    padding: 16, 
-    borderRadius: 14, 
-    marginBottom: 20, 
+  infoCard: {
+    padding: 16,
+    borderRadius: 14,
+    marginBottom: 20,
     borderWidth: 1,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
     shadowRadius: 6,

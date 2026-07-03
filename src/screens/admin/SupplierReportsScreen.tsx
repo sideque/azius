@@ -579,6 +579,10 @@ export function SupplierReportsScreen() {
     navigation.navigate("SupplierBilling", { billId } as never);
   };
 
+  const handleEditPayment = (paymentId: string) => {
+    navigation.navigate("SupplierPayments", { paymentId } as never);
+  };
+
   const confirmDeleteBill = (billId: string) => {
     Alert.alert(
       "Delete Supplier Bill",
@@ -695,7 +699,11 @@ export function SupplierReportsScreen() {
             <View
               style={[
                 styles.typeBadge,
-                { backgroundColor: isBill ? colors.errorLight : colors.successLight },
+                {
+                  backgroundColor: isBill
+                    ? colors.errorLight
+                    : colors.successLight,
+                },
               ]}
             >
               <Text style={[styles.typeBadgeIcon, { color: accent }]}>
@@ -706,7 +714,9 @@ export function SupplierReportsScreen() {
               <Text style={[styles.ledgerReference, { color: colors.text }]}>
                 {item.reference}
               </Text>
-              <Text style={[styles.ledgerDate, { color: colors.textSecondary }]}>
+              <Text
+                style={[styles.ledgerDate, { color: colors.textSecondary }]}
+              >
                 {formatDate(item.date)}
                 {item.type === "payment" && item.paymentMethod
                   ? ` • ${item.paymentMethod}`
@@ -719,7 +729,10 @@ export function SupplierReportsScreen() {
                 {formatCurrency(item.amount)}
               </Text>
               <Text
-                style={[styles.ledgerRunningBalance, { color: colors.textSecondary }]}
+                style={[
+                  styles.ledgerRunningBalance,
+                  { color: colors.textSecondary },
+                ]}
               >
                 Bal {formatCurrency(item.balance)}
               </Text>
@@ -735,7 +748,7 @@ export function SupplierReportsScreen() {
             </Text>
           )}
 
-          {isBill && billItems && billItems.length > 0 && (
+          {/* {isBill && billItems && billItems.length > 0 && (
             <>
               {isExpanded && (
                 <View
@@ -792,6 +805,77 @@ export function SupplierReportsScreen() {
                 </View>
               </View>
             </>
+          )} */}
+          {isBill ? (
+            billItems &&
+            billItems.length > 0 && (
+              <>
+                {isExpanded && (
+                  <View
+                    style={[styles.lineItemBox, { borderColor: colors.border }]}
+                  >
+                    {billItems.map((line) => (
+                      <View key={line.id} style={styles.billLine}>
+                        <Text
+                          style={[styles.billLineText, { color: colors.text }]}
+                        >
+                          {line.productName} · {line.quantity} ×{" "}
+                          {formatCurrency(line.purchasePrice)}
+                        </Text>
+                        <Text
+                          style={[
+                            styles.billLineText,
+                            { color: colors.textSecondary },
+                          ]}
+                        >
+                          {formatCurrency(line.total)}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
+
+                <View style={styles.ledgerActionsRow}>
+                  <Text
+                    style={[styles.expandToggle, { color: colors.primary }]}
+                    onPress={() =>
+                      setExpandedId((id) => (id === item.id ? null : item.id))
+                    }
+                  >
+                    {isExpanded
+                      ? "Hide items"
+                      : `${billItems.length} item${billItems.length > 1 ? "s" : ""} · View`}
+                  </Text>
+
+                  <View style={styles.ledgerActionsButtons}>
+                    <CustomButton
+                      title="Edit"
+                      onPress={() => handleEditBill(item.id)}
+                      variant="secondary"
+                      style={styles.ledgerActionBtn}
+                    />
+                    <CustomButton
+                      title="Delete"
+                      onPress={() => confirmDeleteBill(item.id)}
+                      variant="danger"
+                      style={styles.ledgerActionBtn}
+                    />
+                  </View>
+                </View>
+              </>
+            )
+          ) : (
+            <View style={styles.ledgerActionsRow}>
+              <View />
+              <View style={styles.ledgerActionsButtons}>
+                <CustomButton
+                  title="Edit"
+                  onPress={() => handleEditPayment(item.id)}
+                  variant="secondary"
+                  style={styles.ledgerActionBtn}
+                />
+              </View>
+            </View>
           )}
         </View>
       </View>
@@ -838,9 +922,15 @@ export function SupplierReportsScreen() {
             ]}
           >
             <View style={styles.statementHeaderTop}>
-              <View style={[styles.avatarCircle, { backgroundColor: colors.primaryLight }]}>
+              <View
+                style={[
+                  styles.avatarCircle,
+                  { backgroundColor: colors.primaryLight },
+                ]}
+              >
                 <Text style={[styles.avatarText, { color: colors.primary }]}>
-                  {selectedSupplier.supplierName?.charAt(0)?.toUpperCase() ?? "S"}
+                  {selectedSupplier.supplierName?.charAt(0)?.toUpperCase() ??
+                    "S"}
                 </Text>
               </View>
               <View style={{ flex: 1, marginLeft: 12 }}>
@@ -859,7 +949,10 @@ export function SupplierReportsScreen() {
 
             <View style={styles.statementBalanceRow}>
               <Text
-                style={[styles.statementBalanceLabel, { color: colors.textSecondary }]}
+                style={[
+                  styles.statementBalanceLabel,
+                  { color: colors.textSecondary },
+                ]}
               >
                 Net Outstanding
               </Text>
@@ -915,8 +1008,14 @@ export function SupplierReportsScreen() {
             <Text style={[styles.sectionTitle, { color: colors.text }]}>
               Ledger
             </Text>
-            <Text style={[styles.ledgerSectionCount, { color: colors.textSecondary }]}>
-              {ledgerEntries.length} entr{ledgerEntries.length !== 1 ? "ies" : "y"}
+            <Text
+              style={[
+                styles.ledgerSectionCount,
+                { color: colors.textSecondary },
+              ]}
+            >
+              {ledgerEntries.length} entr
+              {ledgerEntries.length !== 1 ? "ies" : "y"}
             </Text>
           </View>
 
@@ -954,7 +1053,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1,
     padding: 18,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.05,
     shadowRadius: 8,
@@ -991,7 +1090,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1,
     padding: 14,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
     shadowRadius: 6,
@@ -1009,10 +1108,10 @@ const styles = StyleSheet.create({
     marginTop: 24,
     marginBottom: 12,
   },
-  sectionTitle: { 
-    fontSize: 14, 
-    fontWeight: "800", 
-    textTransform: 'uppercase',
+  sectionTitle: {
+    fontSize: 14,
+    fontWeight: "800",
+    textTransform: "uppercase",
     letterSpacing: 0.6,
   },
   ledgerSectionCount: { fontSize: 12 },
@@ -1024,7 +1123,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1,
     overflow: "hidden",
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.03,
     shadowRadius: 3,

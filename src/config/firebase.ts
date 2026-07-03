@@ -1,6 +1,6 @@
 import { getApps, getApp, initializeApp } from 'firebase/app';
 import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore';
-
+import { getAuth } from "firebase/auth";
 const firebaseConfig = {
   apiKey: 'AIzaSyCIs5XqMVs5gEvoWhNtaBhy-QJDD23m1fU',
   authDomain: 'azius-6acb5.firebaseapp.com',
@@ -12,6 +12,7 @@ const firebaseConfig = {
 };
 
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+export const auth = getAuth(app);
 export const db = initializeFirestore(app, {
   localCache: persistentLocalCache({
     tabManager: persistentMultipleTabManager()

@@ -1784,7 +1784,6 @@
 //   return entries.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 // }
 
-
 import {
   addDoc,
   collection,
@@ -1801,7 +1800,7 @@ import {
   where,
 } from "firebase/firestore";
 
-import { db } from "../config/firebase";
+import { auth, db } from "../config/firebase";
 
 import {
   CartItem,
@@ -1829,7 +1828,6 @@ import {
   generateReceiptNumber,
   toISOString,
 } from "../utils/formatters";
-
 const usersCollection = collection(db, "users");
 const productsCollection = collection(db, "products");
 const shopsCollection = collection(db, "shops");
@@ -2041,6 +2039,7 @@ export async function authenticateUser(
   return mapDoc<User>(snapshot.docs[0]);
 }
 
+
 export async function getUserById(id: string): Promise<User | null> {
   const snapshot = await getDoc(doc(usersCollection, id));
   return snapshot.exists() ? mapDoc<User>(snapshot) : null;
@@ -2156,8 +2155,7 @@ export async function updateProduct(
     payload.sellingPrice = product.sellingPrice;
   if (product.stockQuantity !== undefined)
     payload.stockQuantity = product.stockQuantity;
-  if (product.minStock !== undefined)
-    payload.minStock = product.minStock;
+  if (product.minStock !== undefined) payload.minStock = product.minStock;
   if (product.unit !== undefined) payload.unit = product.unit;
   if (product.supplierId !== undefined) payload.supplierId = product.supplierId;
   if (product.supplierName !== undefined)
@@ -2811,7 +2809,7 @@ export async function createSale(
       (sum, item) =>
         sum +
         (Number(item.rate) - Number(item.purchasePrice)) *
-        Number(item.quantity),
+          Number(item.quantity),
       0,
     );
     const profit =
@@ -2903,7 +2901,7 @@ export async function createSale(
       (sum, item) =>
         sum +
         (item.rate - (productSnapshotMap[item.productId]?.purchasePrice ?? 0)) *
-        item.quantity,
+          item.quantity,
       0,
     ),
     createdAt,
@@ -3723,7 +3721,8 @@ export async function updateExpense(
   if (updates.category !== undefined) payload.category = updates.category;
   if (updates.amount !== undefined) payload.amount = updates.amount;
   if (updates.notes !== undefined) payload.notes = updates.notes;
-  if (updates.expenseDate !== undefined) payload.expenseDate = updates.expenseDate;
+  if (updates.expenseDate !== undefined)
+    payload.expenseDate = updates.expenseDate;
   if (Object.keys(payload).length === 0) return;
   await updateDoc(doc(expensesCollection, id), payload);
 }

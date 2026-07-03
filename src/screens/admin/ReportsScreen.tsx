@@ -11,7 +11,6 @@ import {
   Alert,
 } from "react-native";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
-import { BarChart } from "react-native-chart-kit";
 import { Dropdown, SummaryCard, Modal, CustomButton, InvoiceCard, PaymentCard } from "../../components";
 import { useAppDispatch, useAppSelector } from "../../store/hooks";
 import {
@@ -21,14 +20,12 @@ import {
 import { fetchLedger } from "../../store/slices/ledgerSlice";
 import { fetchShops } from "../../store/slices/shopSlice";
 import { useTheme } from "../../theme/ThemeContext";
-import { formatCurrency } from "../../utils/formatters";
+import { formatCurrency, getDateRange } from "../../utils/formatters";
 import { ReportFilter, LedgerEntry, SaleWithDetails, Payment } from "../../types";
 import { LedgerCard } from "../../components";
 import { removeSale } from "../../store/slices/salesSlice";
 import { removePayment } from "../../store/slices/paymentSlice";
 import * as db from "../../services/database";
-
-const screenWidth = Dimensions.get("window").width - 32;
 
 type Tab = "sales" | "payments" | "ledger";
 
@@ -36,7 +33,7 @@ export function ReportsScreen() {
   const { colors, isDark } = useTheme();
   const navigation = useNavigation<any>();
   const dispatch = useAppDispatch();
-  const { salesReport, paymentReport } = useAppSelector((s) => s.reports);
+  const { salesReport, paymentReport, paymentReportShopWise } = useAppSelector((s) => s.reports);
   const shops = useAppSelector((s) => s.shops.items);
   const ledgerEntries = useAppSelector((s) => s.ledger.entries);
   const sortedLedgerEntries = React.useMemo(() => {
@@ -68,11 +65,13 @@ export function ReportsScreen() {
       shopId: shopId || undefined,
     };
     try {
+      // compute date range for ledger queries so ledger respects the selected period
+      const { startDate, endDate } = getDateRange(period);
       await Promise.all([
         dispatch(fetchShops()),
         dispatch(fetchSalesReport(filter)),
         dispatch(fetchPaymentReport(filter)),
-        shopId ? dispatch(fetchLedger({ shopId })) : Promise.resolve(),
+        shopId ? dispatch(fetchLedger({ shopId, startDate, endDate })) : Promise.resolve(),
       ]);
     } finally {
       setLoading(false);
@@ -94,6 +93,11 @@ export function ReportsScreen() {
     { label: "Monthly", value: "monthly" },
     { label: "Yearly", value: "yearly" },
   ];
+
+  // reload when filters change
+  React.useEffect(() => {
+    load();
+  }, [period, shopId]);
 
   const handleLedgerPress = async (entry: LedgerEntry) => {
     setSelectedEntry(entry);
@@ -240,31 +244,6 @@ export function ReportsScreen() {
             title="Invoices"
             value={String(salesReport.productsSold)}
           />
-          <Text style={[styles.section, { color: colors.text }]}>
-            Shop-wise Sales
-          </Text>
-          {salesReport.shopWise.length > 0 && (
-            <BarChart
-              data={{
-                labels: salesReport.shopWise.map((s) => s.shopName.slice(0, 8)),
-                datasets: [
-                  { data: salesReport.shopWise.map((s) => s.total || 0) },
-                ],
-              }}
-              width={screenWidth}
-              height={220}
-              yAxisLabel="₹"
-              yAxisSuffix=""
-              chartConfig={{
-                backgroundColor: colors.card,
-                backgroundGradientFrom: colors.card,
-                backgroundGradientTo: colors.card,
-                color: () => colors.primary,
-                labelColor: () => colors.textSecondary,
-              }}
-              style={styles.chart}
-            />
-          )}
           {salesReport.shopWise.map((s, i) => (
             <View
               key={i}
@@ -299,6 +278,14 @@ export function ReportsScreen() {
             value={formatCurrency(paymentReport.pending)}
             color={colors.errorLight}
           />
+          <Text style={[styles.section, { color: colors.text }]}>Shop-wise Payments</Text>
+          {/** show bar chart and list like sales */}
+          {paymentReportShopWise.map((s, i) => (
+            <View key={i} style={[styles.row, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <Text style={{ color: colors.text, flex: 1 }}>{s.shopName}</Text>
+              <Text style={{ color: colors.primary, fontWeight: '700' }}>{formatCurrency(s.total)}</Text>
+            </View>
+          ))}
         </>
       )}
 
@@ -377,15 +364,6 @@ const styles = StyleSheet.create({
     marginBottom: 12, 
     textTransform: 'uppercase', 
     letterSpacing: 0.6,
-  },
-  chart: { 
-    borderRadius: 16, 
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 2,
   },
   row: {
     flexDirection: "row",

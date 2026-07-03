@@ -189,11 +189,6 @@ export function LoginScreen({ navigation }: Props) {
           </Pressable>
 
           <CustomButton title="Login" onPress={handleLogin} loading={loading} />
-
-          <Text style={styles.hint}>
-            Demo:{" "}
-            {selectedRole === "admin" ? "admin/admin123" : "sales/sales123"}
-          </Text>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>

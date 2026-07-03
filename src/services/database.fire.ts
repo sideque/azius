@@ -3028,7 +3028,6 @@ export async function getSales(
   shopId?: string,
 ): Promise<SaleWithDetails[]> {
   const sales = await getRecentSales(100);
-  console.log("HI", sales)
 
   return sales.filter((sale) => {
     let ok = true;

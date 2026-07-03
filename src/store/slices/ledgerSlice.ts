@@ -19,7 +19,6 @@ const initialState: LedgerState = {
 export const fetchLedger = createAsyncThunk(
   'ledger/fetch',
   async (params: { shopId: string; startDate?: string; endDate?: string }) => {
-    console.log(params.shopId, "fldsafjlkda")
     const [entries, shop] = await Promise.all([
       db.getLedgerEntries(params.shopId, params.startDate, params.endDate),
       db.getShopById(params.shopId),

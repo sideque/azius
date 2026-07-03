@@ -9,6 +9,8 @@ interface ReportState {
   chartData: Awaited<ReturnType<typeof db.getMonthlyChartData>>;
   salesReport: { totalSales: number; totalProfit: number; productsSold: number; shopWise: { shopName: string; total: number }[] };
   paymentReport: { totalReceived: number; pending: number; outstanding: number };
+  // include shop-wise payments for per-shop totals
+  paymentReportShopWise: { shopName: string; total: number }[];
   loading: boolean;
   error: string | null;
 }
@@ -19,6 +21,7 @@ const initialState: ReportState = {
   chartData: [],
   salesReport: { totalSales: 0, totalProfit: 0, productsSold: 0, shopWise: [] },
   paymentReport: { totalReceived: 0, pending: 0, outstanding: 0 },
+  paymentReportShopWise: [],
   loading: false,
   error: null,
 };
@@ -74,10 +77,15 @@ export const fetchPaymentReport = createAsyncThunk('reports/payments', async (fi
     db.getPayments(startDate, endDate, filter.shopId),
     db.getDashboardStats(),
   ]);
+  const shopMap = new Map<string, number>();
+  payments.forEach((p) => {
+    shopMap.set(p.shopName ?? 'Unknown Shop', (shopMap.get(p.shopName ?? 'Unknown Shop') ?? 0) + p.amount);
+  });
   return {
     totalReceived: payments.reduce((s, p) => s + p.amount, 0),
     pending: stats.outstandingBalance,
     outstanding: stats.outstandingBalance,
+    shopWise: Array.from(shopMap.entries()).map(([shopName, total]) => ({ shopName, total })),
   };
 });
 
@@ -101,7 +109,15 @@ const reportSlice = createSlice({
         state.error = action.error.message ?? 'Failed';
       })
       .addCase(fetchSalesReport.fulfilled, (state, action) => { state.salesReport = action.payload; })
-      .addCase(fetchPaymentReport.fulfilled, (state, action) => { state.paymentReport = action.payload; });
+      .addCase(fetchPaymentReport.fulfilled, (state, action) => {
+        // action.payload contains totalReceived/pending/outstanding and shopWise
+        state.paymentReport = {
+          totalReceived: action.payload.totalReceived,
+          pending: action.payload.pending,
+          outstanding: action.payload.outstanding,
+        };
+        state.paymentReportShopWise = action.payload.shopWise || [];
+      });
   },
 });
 

@@ -24,6 +24,7 @@ import {
   createExpense,
   deleteExpense,
   getExpenses,
+  updateExpense,
 } from "../../services/database";
 import { Expense } from "../../types";
 import { formatCurrency, formatDate, toISOString } from "../../utils/formatters";
@@ -68,6 +69,7 @@ export function ExpensesScreen() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   /* ── summary ── */
   const todayStr = new Date().toISOString().slice(0, 10);
@@ -110,8 +112,19 @@ export function ExpensesScreen() {
     try {
       setSaving(true);
       const dateStr = toISOString(expenseDate);
-      await createExpense(category, numAmount, notes.trim(), dateStr);
-      showToast("Expense added successfully", "success");
+      if (editingId) {
+        await updateExpense(editingId, {
+          category,
+          amount: numAmount,
+          notes: notes.trim(),
+          expenseDate: dateStr,
+        });
+        showToast("Expense updated successfully", "success");
+        setEditingId(null);
+      } else {
+        await createExpense(category, numAmount, notes.trim(), dateStr);
+        showToast("Expense added successfully", "success");
+      }
       setAmount("");
       setNotes("");
       setCategory("Petrol");
@@ -121,6 +134,18 @@ export function ExpensesScreen() {
       showToast("Failed to add expense", "error");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleEdit = (exp: Expense) => {
+    setEditingId(exp.id);
+    setCategory(exp.category);
+    setAmount(String(exp.amount));
+    setNotes(exp.notes ?? "");
+    try {
+      setExpenseDate(new Date(exp.expenseDate));
+    } catch {
+      setExpenseDate(new Date());
     }
   };
 
@@ -240,7 +265,15 @@ export function ExpensesScreen() {
         />
 
         <CustomButton
-          title={saving ? "Adding…" : "Add Expense"}
+          title={
+            saving
+              ? editingId
+                ? "Saving…"
+                : "Adding…"
+              : editingId
+              ? "Save Changes"
+              : "Add Expense"
+          }
           onPress={handleAdd}
           disabled={saving}
           style={{ marginTop: 8 }}
@@ -325,6 +358,19 @@ export function ExpensesScreen() {
                     >
                       {formatCurrency(exp.amount)}
                     </Text>
+                    <TouchableOpacity
+                      onPress={() => handleEdit(exp)}
+                      disabled={deletingId === exp.id}
+                      style={[
+                        styles.deleteBtn,
+                        { backgroundColor: colors.primaryLight },
+                      ]}
+                    >
+                      <Text style={{ color: colors.primary, fontSize: 13, fontWeight: "600" }}>
+                        ✎
+                      </Text>
+                    </TouchableOpacity>
+
                     <TouchableOpacity
                       onPress={() => handleDelete(exp)}
                       disabled={deletingId === exp.id}

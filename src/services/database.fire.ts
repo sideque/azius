@@ -3710,3 +3710,21 @@ export async function createExpense(
 export async function deleteExpense(id: string): Promise<void> {
   await deleteDoc(doc(expensesCollection, id));
 }
+
+export async function updateExpense(
+  id: string,
+  updates: {
+    category?: string;
+    amount?: number;
+    notes?: string;
+    expenseDate?: string;
+  },
+): Promise<void> {
+  const payload: Record<string, any> = {};
+  if (updates.category !== undefined) payload.category = updates.category;
+  if (updates.amount !== undefined) payload.amount = updates.amount;
+  if (updates.notes !== undefined) payload.notes = updates.notes;
+  if (updates.expenseDate !== undefined) payload.expenseDate = updates.expenseDate;
+  if (Object.keys(payload).length === 0) return;
+  await updateDoc(doc(expensesCollection, id), payload);
+}

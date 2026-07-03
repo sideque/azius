@@ -21,6 +21,9 @@ import {
 } from "../../store/slices/authSlice";
 import { validateLogin } from "../../utils/validation";
 import { AuthStackParamList } from "../../navigation/types";
+import { signInWithEmailAndPassword } from "firebase/auth";
+import { doc, getDoc } from "firebase/firestore";
+import { auth, db } from "../../config/firebase";
 
 type Props = NativeStackScreenProps<AuthStackParamList, "Login">;
 
@@ -51,6 +54,45 @@ export function LoginScreen({ navigation }: Props) {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
 
+  // const handleLogin = async () => {
+  //   const validation = validateLogin(username, password);
+  //   setErrors(validation.errors);
+  //   if (!validation.isValid) return;
+
+  //   setLoading(true);
+  //   dispatch(loginStart());
+  //   try {
+  //     await getDatabase();
+  //     const user = await authenticateUser(username, password);
+  //     console.log(user, "user");
+  //     if (user) {
+  //       if (user.role !== selectedRole) {
+  //         dispatch(
+  //           loginFailure(
+  //             `Use ${selectedRole === "admin" ? "admin" : "sales"} credentials`,
+  //           ),
+  //         );
+  //         showToast(
+  //           `This login is for ${selectedRole === "admin" ? "admin" : "sales"} users only`,
+  //           "error",
+  //         );
+  //         return;
+  //       }
+  //       dispatch(loginSuccess({ user, rememberMe }));
+  //       showToast("Login successful!");
+  //       navigation.replace("RoleSelection", { role: selectedRole });
+  //     } else {
+  //       dispatch(loginFailure("Invalid username or password"));
+  //       showToast("Invalid credentials", "error");
+  //     }
+  //   } catch {
+  //     dispatch(loginFailure("Login failed"));
+  //     showToast("Something went wrong", "error");
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
+
   const handleLogin = async () => {
     const validation = validateLogin(username, password);
     setErrors(validation.errors);
@@ -58,37 +100,47 @@ export function LoginScreen({ navigation }: Props) {
 
     setLoading(true);
     dispatch(loginStart());
+
     try {
-      await getDatabase();
-      const user = await authenticateUser(username, password);
-      if (user) {
-        if (user.role !== selectedRole) {
-          dispatch(
-            loginFailure(
-              `Use ${selectedRole === "admin" ? "admin" : "sales"} credentials`,
-            ),
-          );
-          showToast(
-            `This login is for ${selectedRole === "admin" ? "admin" : "sales"} users only`,
-            "error",
-          );
-          return;
-        }
-        dispatch(loginSuccess({ user, rememberMe }));
-        showToast("Login successful!");
-        navigation.replace("RoleSelection", { role: selectedRole });
-      } else {
-        dispatch(loginFailure("Invalid username or password"));
-        showToast("Invalid credentials", "error");
+      // 1. Firebase Authentication login
+      const result = await signInWithEmailAndPassword(auth, username, password);
+      const uid = result.user.uid;
+
+      // 2. Get user role from Firestore
+      const userSnap = await getDoc(doc(db, "users", uid));
+
+      if (!userSnap.exists()) {
+        throw new Error("User profile not found");
       }
-    } catch {
+
+      // const userData = userSnap.data();
+      const data = userSnap.data();
+
+      const user = {
+        id: uid,
+        username: data.username,
+        role: data.role,
+      };
+
+      // 3. Role check
+      // if (userData.role !== selectedRole) {
+      //   dispatch(loginFailure(`Use ${selectedRole} credentials`));
+      //   showToast(`This login is for ${selectedRole} only`, "error");
+      //   return;
+      // }
+
+      // 4. Success
+      dispatch(loginSuccess({ user, rememberMe }));
+      showToast("Login successful!");
+      navigation.replace("RoleSelection", { role: selectedRole });
+    } catch (error) {
+      console.log(error);
       dispatch(loginFailure("Login failed"));
-      showToast("Something went wrong", "error");
+      showToast("Invalid credentials", "error");
     } finally {
       setLoading(false);
     }
   };
-
   return (
     <KeyboardAvoidingView
       style={styles.container}
@@ -178,10 +230,7 @@ export function LoginScreen({ navigation }: Props) {
             onPress={() => setRememberMe(!rememberMe)}
           >
             <View
-              style={[
-                styles.checkbox,
-                rememberMe && styles.checkboxActive,
-              ]}
+              style={[styles.checkbox, rememberMe && styles.checkboxActive]}
             >
               {rememberMe && <Text style={styles.checkmark}>✓</Text>}
             </View>

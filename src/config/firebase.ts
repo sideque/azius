@@ -2,13 +2,13 @@ import { getApps, getApp, initializeApp } from 'firebase/app';
 import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore';
 import { getAuth } from "firebase/auth";
 const firebaseConfig = {
-  apiKey: 'AIzaSyCIs5XqMVs5gEvoWhNtaBhy-QJDD23m1fU',
-  authDomain: 'azius-6acb5.firebaseapp.com',
-  projectId: 'azius-6acb5',
-  storageBucket: 'azius-6acb5.firebasestorage.app',
-  messagingSenderId: '1063696631700',
-  appId: '1:1063696631700:web:7ed11f06cbd65851493181',
-  measurementId: 'G-SHVLGQXM3W',
+  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID,
+  measurementId: "G-NFWBYCWRWV",
 };
 
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();

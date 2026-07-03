@@ -2039,7 +2039,6 @@ export async function authenticateUser(
   return mapDoc<User>(snapshot.docs[0]);
 }
 
-
 export async function getUserById(id: string): Promise<User | null> {
   const snapshot = await getDoc(doc(usersCollection, id));
   return snapshot.exists() ? mapDoc<User>(snapshot) : null;

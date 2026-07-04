@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from "react";
-import { ScrollView, StyleSheet, Text } from "react-native";
-import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
+import React, { useCallback, useEffect, useState } from "react";
+import { Alert, ScrollView, StyleSheet, Text } from "react-native";
+import { RouteProp, useFocusEffect, useNavigation, useRoute } from "@react-navigation/native";
 import {
   CustomButton,
   CustomInput,
@@ -44,7 +44,8 @@ export function ProductFormScreen() {
     { label: string; value: string }[]
   >([]);
 
-  useEffect(() => {
+  useFocusEffect(
+  useCallback(() => {
     const emptyForm = {
       productName: "",
       productCode: "",
@@ -57,8 +58,11 @@ export function ProductFormScreen() {
       description: "",
     };
 
-    setForm(emptyForm);
     setErrors({});
+
+    if (!productId) {
+      setForm(emptyForm);
+    }
 
     const loadUnits = async () => {
       try {
@@ -74,6 +78,7 @@ export function ProductFormScreen() {
           "gm",
           "ml",
         ];
+
         const units = Array.from(
           new Set([
             ...defaultUnits,
@@ -82,8 +87,8 @@ export function ProductFormScreen() {
               .filter((unit): unit is string => Boolean(unit)),
           ]),
         );
-        const options = units.map((unit) => ({ label: unit, value: unit }));
-        setUnitOptions(options);
+
+        setUnitOptions(units.map((unit) => ({ label: unit, value: unit })));
       } catch (error) {
         console.warn("Failed to load product units", error);
         setUnitOptions([]);
@@ -91,9 +96,10 @@ export function ProductFormScreen() {
     };
 
     loadUnits();
+
     if (productId) {
       getProductById(productId).then((p) => {
-        if (p)
+        if (p) {
           setForm({
             productName: p.productName,
             productCode: p.productCode,
@@ -105,9 +111,12 @@ export function ProductFormScreen() {
             unit: p.unit,
             description: p.description,
           });
+        }
       });
     }
-  }, [productId]);
+
+  }, [productId])
+);
 
   const update = (key: string, value: string) =>
     setForm((f) => ({ ...f, [key]: value }));
@@ -193,12 +202,35 @@ export function ProductFormScreen() {
     }
   };
 
+  // const handleDelete = async () => {
+  //   if (productId) {
+  //     await dispatch(removeProduct(productId));
+  //     showToast("Product deleted");
+  //     navigation.navigate("Products" as never);
+  //   }
+  // };
   const handleDelete = async () => {
-    if (productId) {
-      await dispatch(removeProduct(productId));
-      showToast("Product deleted");
-      navigation.navigate("Products" as never);
-    }
+    if (!productId) return;
+
+    Alert.alert(
+      "Delete Product",
+      "Are you sure you want to delete this product?",
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            await dispatch(removeProduct(productId));
+            showToast("Product deleted");
+            navigation.navigate("Products" as never);
+          },
+        },
+      ],
+    );
   };
 
   return (

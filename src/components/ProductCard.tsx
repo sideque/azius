@@ -27,12 +27,6 @@ export function ProductCard({ product, onPress, onAdd, showStock = true }: Props
       <View style={styles.header}>
         <View style={{ flex: 1 }}>
           <Text style={[styles.name, { color: colors.text }]}>{product.productName}</Text>
-          <View style={styles.tagRow}>
-            <View style={[styles.categoryChip, { backgroundColor: colors.secondaryLight }]}>
-              <Text style={[styles.categoryText, { color: colors.secondary }]}>{product.category}</Text>
-            </View>
-            <Text style={[styles.code, { color: colors.textMuted }]}>{product.productCode}</Text>
-          </View>
         </View>
         {onAdd && (
           <Pressable

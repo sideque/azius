@@ -1,6 +1,9 @@
 import React, { createContext, useCallback, useContext, useState } from 'react';
 import { Animated, StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../theme/ThemeContext';
+
+type IoniconsName = keyof typeof Ionicons.glyphMap;
 
 type ToastType = 'success' | 'error' | 'info';
 
@@ -30,7 +33,8 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 
   const bgColor = type === 'success' ? colors.successLight : type === 'error' ? colors.errorLight : colors.infoLight;
   const textColor = type === 'success' ? colors.success : type === 'error' ? colors.error : colors.info;
-  const icon = type === 'success' ? '✓' : type === 'error' ? '✕' : 'ℹ';
+  const iconName: IoniconsName =
+    type === 'success' ? 'checkmark' : type === 'error' ? 'close' : 'information';
 
   return (
     <ToastContext.Provider value={{ showToast }}>
@@ -38,7 +42,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       {visible && (
         <Animated.View style={[styles.toast, { backgroundColor: bgColor, borderColor: textColor, opacity }]}>
           <View style={[styles.iconCircle, { backgroundColor: textColor }]}>
-            <Text style={styles.iconText}>{icon}</Text>
+            <Ionicons name={iconName} size={13} color="#fff" />
           </View>
           <Text style={[styles.toastText, { color: textColor }]}>{message}</Text>
         </Animated.View>
@@ -73,6 +77,5 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
   },
   iconCircle: { width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginRight: 10 },
-  iconText: { color: '#fff', fontSize: 12, fontWeight: '800' },
   toastText: { flex: 1, fontSize: 14, fontWeight: '600' },
 });

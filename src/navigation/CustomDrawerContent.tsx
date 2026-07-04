@@ -6,6 +6,7 @@ import {
 } from "@react-navigation/drawer";
 import { CommonActions } from "@react-navigation/native";
 import { StyleSheet, Text, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
 import { logout } from "../store/slices/authSlice";
 import { useTheme } from "../theme/ThemeContext";
@@ -37,11 +38,17 @@ export function CustomDrawerContent(props: any) {
       <DrawerItemList {...props} />
       <DrawerItem
         label="Switch to Sales Panel"
+        icon={({ size }) => (
+          <Ionicons name="swap-horizontal-outline" size={size} color={colors.secondary} />
+        )}
         onPress={() => props.navigation.getParent()?.navigate("SalesApp")}
         labelStyle={{ color: colors.secondary }}
       />
       <DrawerItem
         label="Logout"
+        icon={({ size }) => (
+          <Ionicons name="log-out-outline" size={size} color={colors.error} />
+        )}
         onPress={goToLogin}
         labelStyle={{ color: colors.error }}
       />

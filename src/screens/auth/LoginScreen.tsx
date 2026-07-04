@@ -10,6 +10,7 @@ import {
   Dimensions,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons } from "@expo/vector-icons";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { CustomButton, CustomInput, useToast } from "../../components";
 import { authenticateUser, getDatabase } from "../../services/database";
@@ -182,14 +183,21 @@ export function LoginScreen({ navigation }: Props) {
               ]}
               onPress={() => setSelectedRole("admin")}
             >
-              <Text
-                style={[
-                  styles.roleButtonText,
-                  selectedRole === "admin" && styles.roleButtonTextActive,
-                ]}
-              >
-                🏢 Admin
-              </Text>
+              <View style={styles.roleButtonContent}>
+                <Ionicons
+                  name="business-outline"
+                  size={15}
+                  color={selectedRole === "admin" ? "#fff" : THEME.textSecondary}
+                />
+                <Text
+                  style={[
+                    styles.roleButtonText,
+                    selectedRole === "admin" && styles.roleButtonTextActive,
+                  ]}
+                >
+                  Admin
+                </Text>
+              </View>
             </Pressable>
             <Pressable
               style={[
@@ -198,14 +206,21 @@ export function LoginScreen({ navigation }: Props) {
               ]}
               onPress={() => setSelectedRole("sales")}
             >
-              <Text
-                style={[
-                  styles.roleButtonText,
-                  selectedRole === "sales" && styles.roleButtonTextActive,
-                ]}
-              >
-                💼 Sales
-              </Text>
+              <View style={styles.roleButtonContent}>
+                <Ionicons
+                  name="briefcase-outline"
+                  size={15}
+                  color={selectedRole === "sales" ? "#fff" : THEME.textSecondary}
+                />
+                <Text
+                  style={[
+                    styles.roleButtonText,
+                    selectedRole === "sales" && styles.roleButtonTextActive,
+                  ]}
+                >
+                  Sales
+                </Text>
+              </View>
             </Pressable>
           </View>
 
@@ -232,7 +247,7 @@ export function LoginScreen({ navigation }: Props) {
             <View
               style={[styles.checkbox, rememberMe && styles.checkboxActive]}
             >
-              {rememberMe && <Text style={styles.checkmark}>✓</Text>}
+              {rememberMe && <Ionicons name="checkmark" size={14} color="#fff" />}
             </View>
             <Text style={styles.rememberText}>Remember Me</Text>
           </Pressable>
@@ -357,6 +372,7 @@ const styles = StyleSheet.create({
     backgroundColor: THEME.gradientMid,
     borderColor: THEME.gold,
   },
+  roleButtonContent: { flexDirection: "row", alignItems: "center", gap: 6 },
   roleButtonText: {
     fontWeight: "700",
     fontSize: 13,
@@ -382,7 +398,6 @@ const styles = StyleSheet.create({
     backgroundColor: THEME.gold,
     borderColor: THEME.gold,
   },
-  checkmark: { color: "#fff", fontSize: 14, fontWeight: "700" },
   rememberText: { color: THEME.text, fontSize: 14 },
 
   hint: {

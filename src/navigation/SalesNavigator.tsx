@@ -3,6 +3,7 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { CommonActions, useNavigation } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Pressable, Text } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { SalesTabParamList } from "./types";
 import { CreateSaleScreen } from "../screens/sales/CreateSaleScreen";
 import { CollectPaymentScreen } from "../screens/sales/CollectPaymentScreen";
@@ -13,6 +14,8 @@ import { useTheme } from "../theme/ThemeContext";
 
 const Tab = createBottomTabNavigator<SalesTabParamList>();
 
+type IoniconsName = keyof typeof Ionicons.glyphMap;
+
 function TabIcon({
   label,
   focused,
@@ -22,15 +25,13 @@ function TabIcon({
   focused: boolean;
   color: string;
 }) {
-  const icons: Record<string, string> = {
-    CreateSale: "🛒",
-    CollectPayment: "💰",
-    ShopLedger: "📒",
+  const icons: Record<string, IoniconsName> = {
+    CreateSale: focused ? "cart" : "cart-outline",
+    CollectPayment: focused ? "cash" : "cash-outline",
+    ShopLedger: focused ? "book" : "book-outline",
   };
   return (
-    <Text style={{ fontSize: focused ? 22 : 20, color }}>
-      {icons[label] ?? "•"}
-    </Text>
+    <Ionicons name={icons[label] ?? "ellipse"} size={focused ? 24 : 22} color={color} />
   );
 }
 

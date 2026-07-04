@@ -30,7 +30,7 @@ export function ShopListScreen() {
           data={items}
           keyExtractor={(item) => item.id}
           refreshControl={<RefreshControl refreshing={loading} onRefresh={load} colors={[colors.primary]} />}
-          ListEmptyComponent={<EmptyState title="No Shops" message="Add your first shop" icon="🏪" />}
+          ListEmptyComponent={<EmptyState title="No Shops" message="Add your first shop" icon="storefront-outline" />}
           renderItem={({ item }) => (
             <ShopCard shop={item} onPress={() => navigation.navigate('ShopForm', { shopId: item.id })} />
           )}

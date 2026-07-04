@@ -1,13 +1,16 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../theme/ThemeContext';
+
+type IoniconsName = keyof typeof Ionicons.glyphMap;
 
 interface Props {
   title: string;
   value: string | number;
   subtitle?: string;
   color?: string;
-  icon?: string;
+  icon?: IoniconsName;
 }
 
 export function DashboardCard({ title, value, subtitle, color, icon }: Props) {
@@ -17,7 +20,7 @@ export function DashboardCard({ title, value, subtitle, color, icon }: Props) {
     <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border, borderLeftColor: accentColor }]}>
       {icon && (
         <View style={[styles.iconWrap, { backgroundColor: accentColor + '18' }]}>
-          <Text style={styles.icon}>{icon}</Text>
+          <Ionicons name={icon} size={18} color={accentColor} />
         </View>
       )}
       <Text style={[styles.title, { color: colors.textMuted }]}>{title}</Text>
@@ -54,7 +57,6 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   iconWrap: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
-  icon: { fontSize: 18 },
   title: { fontSize: 11, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.6 },
   value: { fontSize: 22, fontWeight: '800', marginTop: 6, letterSpacing: -0.5 },
   subtitle: { fontSize: 11, marginTop: 4 },

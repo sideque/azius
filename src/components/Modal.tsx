@@ -1,5 +1,6 @@
 import React from 'react';
 import { Modal as RNModal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../theme/ThemeContext';
 import { CustomButton } from './CustomButton';
 
@@ -25,7 +26,11 @@ export function ConfirmationDialog({
         <View style={[styles.dialog, { backgroundColor: colors.surface }]}>
           {/* Icon indicator */}
           <View style={[styles.dialogIconWrap, { backgroundColor: destructive ? colors.errorLight : colors.primaryLight }]}>
-            <Text style={styles.dialogIcon}>{destructive ? '⚠️' : '❓'}</Text>
+            <Ionicons
+              name={destructive ? 'warning-outline' : 'help-circle-outline'}
+              size={28}
+              color={destructive ? colors.error : colors.primary}
+            />
           </View>
           <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
           <Text style={[styles.message, { color: colors.textSecondary }]}>{message}</Text>
@@ -64,7 +69,7 @@ export function Modal({ visible, title, onClose, children }: ModalProps) {
                 pressed && { opacity: 0.7 },
               ]}
             >
-              <Text style={[styles.closeIcon, { color: colors.textSecondary }]}>✕</Text>
+              <Ionicons name="close" size={16} color={colors.textSecondary} />
             </Pressable>
           </View>
           {children}
@@ -96,7 +101,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 16,
   },
-  dialogIcon: { fontSize: 28 },
   title: { fontSize: 18, fontWeight: '700', textAlign: 'center' },
   message: { fontSize: 14, marginTop: 8, lineHeight: 22, textAlign: 'center' },
   actions: { flexDirection: 'row', marginTop: 24, width: '100%' },
@@ -123,6 +127,5 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
   },
   closeBtn: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
-  closeIcon: { fontSize: 14, fontWeight: '700' },
 });
 

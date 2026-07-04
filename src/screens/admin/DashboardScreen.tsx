@@ -85,12 +85,12 @@ export function DashboardScreen() {
         <DashboardCard
           title="Total Shops"
           value={stats?.totalShops ?? 0}
-          icon="🏪"
+          icon="storefront-outline"
         />
         <DashboardCard
           title="Total Products"
           value={stats?.totalProducts ?? 0}
-          icon="📦"
+          icon="cube-outline"
         />
         <DashboardCard
           title="Sales Today"
@@ -202,7 +202,7 @@ export function DashboardScreen() {
         <EmptyState
           title="No sales yet"
           message="Top products will appear here"
-          icon="📊"
+          icon="bar-chart-outline"
         />
       ) : (
         topProducts.map(
@@ -242,7 +242,7 @@ export function DashboardScreen() {
 
       <Text style={[styles.section, { color: colors.text }]}>Recent Sales</Text>
       {recentSales.length === 0 ? (
-        <EmptyState title="No recent sales" icon="🧾" />
+        <EmptyState title="No recent sales" icon="receipt-outline" />
       ) : (
         recentSales.map((sale) => (
           <View

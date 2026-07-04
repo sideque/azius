@@ -9,6 +9,7 @@ import {
   View,
 } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
+import { Ionicons } from "@expo/vector-icons";
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
 import * as FileSystem from "expo-file-system/legacy";
@@ -537,7 +538,7 @@ export function CreateSaleScreen() {
       <FlatList
         data={filteredProducts}
         keyExtractor={(item) => item.id}
-        ListEmptyComponent={<EmptyState title="No Products" icon="📦" />}
+        ListEmptyComponent={<EmptyState title="No Products" icon="cube-outline" />}
         renderItem={({ item }) => (
           <ProductCard
             product={item}
@@ -554,10 +555,16 @@ export function CreateSaleScreen() {
           style={[styles.cartBar, { backgroundColor: colors.primary }]}
           onPress={() => setShowCart(true)}
         >
-          <Text style={styles.cartText}>
-            🛒 {cart.length} items • {formatCurrency(grandTotal)}
-          </Text>
-          <Text style={styles.cartText}>View Cart →</Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+            <Ionicons name="cart" size={16} color="#fff" />
+            <Text style={styles.cartText}>
+              {cart.length} items • {formatCurrency(grandTotal)}
+            </Text>
+          </View>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 2 }}>
+            <Text style={styles.cartText}>View Cart</Text>
+            <Ionicons name="chevron-forward" size={14} color="#fff" />
+          </View>
         </Pressable>
       )}
 
@@ -577,10 +584,11 @@ export function CreateSaleScreen() {
                 </Text>
                 <Pressable
                   onPress={() => handlePromptPrice(item)}
-                  style={{ marginTop: 4, alignSelf: "flex-start" }}
+                  style={{ marginTop: 4, alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 4 }}
                 >
+                  <Ionicons name="pencil-outline" size={12} color={colors.primary} />
                   <Text style={{ color: colors.primary, fontSize: 12, fontWeight: "700" }}>
-                    ✏️ Edit Price
+                    Edit Price
                   </Text>
                 </Pressable>
               </View>
@@ -597,7 +605,7 @@ export function CreateSaleScreen() {
                   }}
                   style={[styles.qtyBtn, { backgroundColor: colors.border }]}
                 >
-                  <Text>-</Text>
+                  <Ionicons name="remove" size={14} color={colors.text} />
                 </Pressable>
                 <Text
                   style={{
@@ -624,7 +632,7 @@ export function CreateSaleScreen() {
                   }}
                   style={[styles.qtyBtn, { backgroundColor: colors.border }]}
                 >
-                  <Text>+</Text>
+                  <Ionicons name="add" size={14} color={colors.text} />
                 </Pressable>
               </View>
               <Pressable
@@ -633,7 +641,7 @@ export function CreateSaleScreen() {
                   if (user?.id) dispatch(syncCartToFirebase());
                 }}
               >
-                <Text style={{ color: colors.error, marginLeft: 8 }}>✕</Text>
+                <Ionicons name="close" size={16} color={colors.error} style={{ marginLeft: 8 }} />
               </Pressable>
             </View>
           ))}

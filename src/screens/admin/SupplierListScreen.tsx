@@ -63,7 +63,7 @@ export function SupplierListScreen() {
             <EmptyState
               title="No Suppliers"
               message="Add your first supplier"
-              icon="🏭"
+              icon="business-outline"
             />
           }
           renderItem={({ item }) => (

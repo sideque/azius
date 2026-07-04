@@ -6,6 +6,7 @@ import {
   Text,
   View,
   Alert,
+  RefreshControl,
 } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import {
@@ -50,6 +51,7 @@ export function ShopLedgerScreen() {
   >(null);
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   const loadShops = useCallback(() => dispatch(fetchShops()), [dispatch]);
   useFocusEffect(
@@ -64,6 +66,26 @@ export function ShopLedgerScreen() {
     const { startDate, endDate } = getDateRange(filterPeriod);
     dispatch(fetchLedger({ shopId: id, startDate, endDate }));
   };
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      const tasks: Promise<unknown>[] = [dispatch(fetchShops())];
+      if (shopId) {
+        const filterPeriod =
+          period === "daily"
+            ? "daily"
+            : period === "monthly"
+              ? "monthly"
+              : "custom";
+        const { startDate, endDate } = getDateRange(filterPeriod);
+        tasks.push(dispatch(fetchLedger({ shopId, startDate, endDate })));
+      }
+      await Promise.all(tasks);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [dispatch, shopId, period]);
 
   const shopOptions = shops.map((s) => ({ label: s.shopName, value: s.id }));
   const periodOptions = [
@@ -146,6 +168,11 @@ export function ShopLedgerScreen() {
 
   const lastSale = entries.find((e) => e.transactionType === "sale");
   const lastPayment = entries.find((e) => e.transactionType === "payment");
+  // entries are sorted newest-first, so entries[0] carries the latest
+  // running balance (matches the balance shown on the last ledger card).
+  const currentOutstanding = entries.length
+    ? entries[0].balance
+    : (selectedShop?.outstandingBalance ?? 0);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -273,7 +300,7 @@ export function ShopLedgerScreen() {
                       fontSize: 16,
                     }}
                   >
-                    {formatCurrency(selectedShop.outstandingBalance)}
+                    {formatCurrency(currentOutstanding)}
                   </Text>
                 </View>
 
@@ -323,7 +350,7 @@ export function ShopLedgerScreen() {
                 <EmptyState
                   title="No Transactions"
                   message="No ledger entries for this period"
-                  icon="📒"
+                  icon="receipt-outline"
                 />
               }
               renderItem={({ item }) => (
@@ -333,6 +360,14 @@ export function ShopLedgerScreen() {
                 />
               )}
               style={{ flex: 1 }}
+              refreshControl={
+                <RefreshControl
+                  refreshing={refreshing}
+                  onRefresh={handleRefresh}
+                  colors={[colors.primary]}
+                  tintColor={colors.primary}
+                />
+              }
             />
           )}
         </>

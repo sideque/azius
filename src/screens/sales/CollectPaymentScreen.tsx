@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import {
@@ -16,6 +16,7 @@ import {
   collectPayment,
   clearLastPayment,
 } from "../../store/slices/paymentSlice";
+import * as db from "../../services/database";
 import { unwrapResult } from "@reduxjs/toolkit";
 import { useTheme } from "../../theme/ThemeContext";
 import { validatePayment } from "../../utils/validation";
@@ -46,6 +47,7 @@ export function CollectPaymentScreen() {
   const [paymentDate, setPaymentDate] = useState(new Date());
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [showReceipt, setShowReceipt] = useState(false);
+  const [latestBalance, setLatestBalance] = useState<number | null>(null);
 
   const load = useCallback(() => dispatch(fetchShops()), [dispatch]);
   useFocusEffect(
@@ -61,13 +63,32 @@ export function CollectPaymentScreen() {
 
   const selectedShop = shops.find((s) => s.id === shopId);
 
+  // The shop's stored outstandingBalance can drift out of sync; the ledger's
+  // latest running balance (same value shown on the last card in
+  // ShopLedgerScreen) is the source of truth.
+  useEffect(() => {
+    if (!shopId) {
+      setLatestBalance(null);
+      return;
+    }
+    let cancelled = false;
+    db.getLedgerEntries(shopId).then((entries) => {
+      if (!cancelled) setLatestBalance(entries.length ? entries[0].balance : null);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [shopId]);
+
+  const outstandingBalance = latestBalance ?? selectedShop?.outstandingBalance ?? 0;
+
   const handleSave = async () => {
     const validation = validatePayment(amount, shopId);
     setErrors(validation.errors);
     if (!validation.isValid) return;
 
     const payAmount = parseFloat(amount);
-    if (selectedShop && payAmount > selectedShop.outstandingBalance) {
+    if (selectedShop && payAmount > outstandingBalance) {
       showToast("Amount exceeds outstanding balance", "error");
       return;
     }
@@ -89,6 +110,8 @@ export function CollectPaymentScreen() {
       setAmount("");
       setNotes("");
       dispatch(fetchShops());
+      const entries = await db.getLedgerEntries(shopId);
+      setLatestBalance(entries.length ? entries[0].balance : null);
     } catch (error: any) {
       showToast(error?.message ?? (error as string) ?? "Failed", "error");
     }
@@ -116,7 +139,7 @@ export function CollectPaymentScreen() {
           <Text
             style={{ color: colors.warning, fontSize: 24, fontWeight: "700" }}
           >
-            {formatCurrency(selectedShop.outstandingBalance)}
+            {formatCurrency(outstandingBalance)}
           </Text>
         </View>
       )}

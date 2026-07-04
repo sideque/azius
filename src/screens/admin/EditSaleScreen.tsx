@@ -8,6 +8,7 @@ import {
   Pressable,
 } from "react-native";
 import { useNavigation, useRoute } from "@react-navigation/native";
+import { Ionicons } from "@expo/vector-icons";
 import { CustomButton, CustomInput, useToast } from "../../components";
 import { useAppDispatch } from "../../store/hooks";
 import { updateSale } from "../../store/slices/salesSlice";
@@ -174,7 +175,7 @@ export function EditSaleScreen() {
               }
               style={[styles.qtyBtn, { backgroundColor: colors.primaryLight }]}
             >
-              <Text style={{ color: colors.primary, fontSize: 18 }}>-</Text>
+              <Ionicons name="remove" size={18} color={colors.primary} />
             </Pressable>
 
             <Text
@@ -187,10 +188,10 @@ export function EditSaleScreen() {
               onPress={() => updateQuantity(item.id, item.quantity + 1)}
               style={[styles.qtyBtn, { backgroundColor: colors.primaryLight }]}
             >
-              <Text style={{ color: colors.primary, fontSize: 18 }}>+</Text>
+              <Ionicons name="add" size={18} color={colors.primary} />
             </Pressable>
 
-            {/* ✏️ Edit Button */}
+            {/* Edit Button */}
             <Pressable
               onPress={() => {
                 setEditingItem(item);
@@ -205,7 +206,7 @@ export function EditSaleScreen() {
                 },
               ]}
             >
-              <Text style={{ color: colors.primary }}>✏️</Text>
+              <Ionicons name="pencil-outline" size={16} color={colors.primary} />
             </Pressable>
 
             {/* Delete Button */}
@@ -219,7 +220,7 @@ export function EditSaleScreen() {
                 },
               ]}
             >
-              <Text style={{ color: colors.error }}>X</Text>
+              <Ionicons name="trash-outline" size={16} color={colors.error} />
             </Pressable>
           </View>
         </View>

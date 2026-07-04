@@ -1,5 +1,6 @@
 import React from "react";
 import { ScrollView, StyleSheet, Text, View, Pressable } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { SaleWithDetails, Supplier } from "../types";
 import { formatCurrency, formatDateTime } from "../utils/formatters";
 import { useTheme } from "../theme/ThemeContext";
@@ -200,18 +201,22 @@ export function SupplierCard({
             {supplier.phoneNumber}
           </Text>
         </View>
-        <Text style={{ color: colors.textMuted, fontSize: 18 }}>›</Text>
+        <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
       </View>
 
       {(supplier.address || supplier.notes) && (
         <View style={[styles.supplierFooter, { borderTopColor: colors.border }]}>
           {supplier.address ? (
-            <Text style={{ color: colors.textMuted, fontSize: 12 }}>📍 {supplier.address}</Text>
+            <View style={styles.iconRow}>
+              <Ionicons name="location-outline" size={13} color={colors.textMuted} />
+              <Text style={{ color: colors.textMuted, fontSize: 12 }}>{supplier.address}</Text>
+            </View>
           ) : null}
           {supplier.notes ? (
-            <Text style={{ color: colors.textMuted, fontSize: 12, marginTop: 4 }}>
-              📝 {supplier.notes}
-            </Text>
+            <View style={[styles.iconRow, { marginTop: 4 }]}>
+              <Ionicons name="document-text-outline" size={13} color={colors.textMuted} />
+              <Text style={{ color: colors.textMuted, fontSize: 12 }}>{supplier.notes}</Text>
+            </View>
           ) : null}
         </View>
       )}
@@ -376,6 +381,7 @@ const styles = StyleSheet.create({
   supplierAvatar: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   supplierAvatarText: { fontSize: 16, fontWeight: '800' },
   supplierFooter: { marginTop: 12, paddingTop: 12, borderTopWidth: 1 },
+  iconRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
 
   // Ledger
   txTypeBadge: { alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },

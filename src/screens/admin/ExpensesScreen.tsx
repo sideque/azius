@@ -10,6 +10,7 @@ import {
   View,
 } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
+import { Ionicons } from "@expo/vector-icons";
 import {
   CustomButton,
   CustomInput,
@@ -31,27 +32,29 @@ import { formatCurrency, formatDate, toISOString } from "../../utils/formatters"
 
 /* ───── category options ───── */
 const EXPENSE_CATEGORIES = [
-  { label: "🛢  Petrol", value: "Petrol" },
-  { label: "🚗  Vehicle", value: "Vehicle" },
-  { label: "🍔  Food", value: "Food" },
-  { label: "🏠  Rent", value: "Rent" },
-  { label: "💡  Utilities", value: "Utilities" },
-  { label: "🛠  Maintenance", value: "Maintenance" },
-  { label: "📦  Packaging", value: "Packaging" },
-  { label: "🚚  Transport", value: "Transport" },
-  { label: "📋  Others", value: "Others" },
+  { label: "Petrol", value: "Petrol" },
+  { label: "Vehicle", value: "Vehicle" },
+  { label: "Food", value: "Food" },
+  { label: "Rent", value: "Rent" },
+  { label: "Utilities", value: "Utilities" },
+  { label: "Maintenance", value: "Maintenance" },
+  { label: "Packaging", value: "Packaging" },
+  { label: "Transport", value: "Transport" },
+  { label: "Others", value: "Others" },
 ];
 
-const CATEGORY_ICONS: Record<string, string> = {
-  Petrol: "🛢",
-  Vehicle: "🚗",
-  Food: "🍔",
-  Rent: "🏠",
-  Utilities: "💡",
-  Maintenance: "🛠",
-  Packaging: "📦",
-  Transport: "🚚",
-  Others: "📋",
+type IoniconsName = keyof typeof Ionicons.glyphMap;
+
+const CATEGORY_ICONS: Record<string, IoniconsName> = {
+  Petrol: "water-outline",
+  Vehicle: "car-outline",
+  Food: "fast-food-outline",
+  Rent: "home-outline",
+  Utilities: "flash-outline",
+  Maintenance: "build-outline",
+  Packaging: "cube-outline",
+  Transport: "car-sport-outline",
+  Others: "ellipsis-horizontal-outline",
 };
 
 export function ExpensesScreen() {
@@ -298,7 +301,7 @@ export function ExpensesScreen() {
 
       {groupedKeys.length === 0 ? (
         <EmptyState
-          icon="💰"
+          icon="wallet-outline"
           title="No Expenses Yet"
           message="Add your first expense above"
         />
@@ -340,9 +343,13 @@ export function ExpensesScreen() {
                   ]}
                 >
                   <View style={styles.expenseLeft}>
-                    <Text style={styles.expenseIcon}>
-                      {CATEGORY_ICONS[exp.category] ?? "📋"}
-                    </Text>
+                    <View style={[styles.expenseIconWrap, { backgroundColor: colors.primaryLight }]}>
+                      <Ionicons
+                        name={CATEGORY_ICONS[exp.category] ?? "ellipsis-horizontal-outline"}
+                        size={16}
+                        color={colors.primary}
+                      />
+                    </View>
                     <View style={{ flex: 1 }}>
                       <Text
                         style={[styles.expenseCategory, { color: colors.text }]}
@@ -377,9 +384,7 @@ export function ExpensesScreen() {
                         { backgroundColor: colors.primaryLight },
                       ]}
                     >
-                      <Text style={{ color: colors.primary, fontSize: 13, fontWeight: "600" }}>
-                        ✎
-                      </Text>
+                      <Ionicons name="pencil-outline" size={14} color={colors.primary} />
                     </TouchableOpacity>
 
                     <TouchableOpacity
@@ -390,9 +395,11 @@ export function ExpensesScreen() {
                         { backgroundColor: colors.errorLight },
                       ]}
                     >
-                      <Text style={{ color: colors.error, fontSize: 13, fontWeight: "600" }}>
-                        {deletingId === exp.id ? "…" : "✕"}
-                      </Text>
+                      {deletingId === exp.id ? (
+                        <Text style={{ color: colors.error, fontSize: 13, fontWeight: "600" }}>…</Text>
+                      ) : (
+                        <Ionicons name="trash-outline" size={14} color={colors.error} />
+                      )}
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -465,7 +472,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   expenseLeft: { flexDirection: "row", alignItems: "center", flex: 1, gap: 10 },
-  expenseIcon: { fontSize: 22 },
+  expenseIconWrap: { width: 32, height: 32, borderRadius: 10, alignItems: "center", justifyContent: "center" },
   expenseCategory: { fontSize: 15, fontWeight: "600" },
   expenseNotes: { fontSize: 12, marginTop: 2 },
 

@@ -61,7 +61,7 @@ export function ProductListScreen() {
           data={items}
           keyExtractor={(item) => item.id}
           refreshControl={<RefreshControl refreshing={loading} onRefresh={load} colors={[colors.primary]} />}
-          ListEmptyComponent={<EmptyState title="No Products" message="Add your first product" icon="📦" />}
+          ListEmptyComponent={<EmptyState title="No Products" message="Add your first product" icon="cube-outline" />}
           renderItem={({ item }) => (
             <ProductCard
               product={item}

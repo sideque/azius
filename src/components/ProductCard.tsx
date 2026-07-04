@@ -1,5 +1,6 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Product } from '../types';
 import { formatCurrency } from '../utils/formatters';
 import { useTheme } from '../theme/ThemeContext';
@@ -37,7 +38,7 @@ export function ProductCard({ product, onPress, onAdd, showStock = true }: Props
               pressed && { transform: [{ scale: 0.9 }] },
             ]}
           >
-            <Text style={styles.addText}>+</Text>
+            <Ionicons name="add" size={22} color="#fff" />
           </Pressable>
         )}
       </View>
@@ -45,9 +46,10 @@ export function ProductCard({ product, onPress, onAdd, showStock = true }: Props
       <View style={styles.footer}>
         <Text style={[styles.price, { color: colors.primary }]}>{formatCurrency(product.sellingPrice)}/{product.unit}</Text>
         {showStock && (
-          <View style={[styles.stockBadge, { backgroundColor: lowStock ? colors.errorLight : colors.successLight }]}>
+          <View style={[styles.stockBadge, { backgroundColor: lowStock ? colors.errorLight : colors.successLight, flexDirection: 'row', alignItems: 'center', gap: 4 }]}>
+            {lowStock && <Ionicons name="warning-outline" size={12} color={colors.error} />}
             <Text style={[styles.stockText, { color: lowStock ? colors.error : colors.success }]}>
-              {lowStock ? '⚠ ' : ''}Stock: {product.stockQuantity}
+              Stock: {product.stockQuantity}
             </Text>
           </View>
         )}
@@ -76,7 +78,6 @@ const styles = StyleSheet.create({
   code: { fontSize: 12 },
   divider: { height: 1, marginVertical: 10 },
   addBtn: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', marginLeft: 10 },
-  addText: { color: '#fff', fontSize: 22, fontWeight: '700', lineHeight: 26, textAlign: 'center' },
   footer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   price: { fontSize: 16, fontWeight: '800' },
   stockBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },

@@ -8,6 +8,7 @@ import {
   View,
   TextInput,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../theme/ThemeContext";
 
 interface Option {
@@ -62,7 +63,7 @@ export function Dropdown({
         <Text style={{ color: selected ? colors.text : colors.textMuted, fontSize: 15, fontWeight: selected ? "500" : "400" }}>
           {selected?.label ?? placeholder}
         </Text>
-        <Text style={{ color: colors.textSecondary, fontSize: 10 }}>▼</Text>
+        <Ionicons name="chevron-down" size={14} color={colors.textSecondary} />
       </Pressable>
 
       <Modal visible={open} transparent animationType="fade">
@@ -117,7 +118,7 @@ export function Dropdown({
                       >
                         {item.label}
                       </Text>
-                      {isSelected && <Text style={{ color: colors.primary, fontWeight: '700' }}>✓</Text>}
+                      {isSelected && <Ionicons name="checkmark" size={16} color={colors.primary} />}
                     </Pressable>
                   );
                 }}

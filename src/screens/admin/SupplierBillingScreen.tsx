@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { DrawerNavigationProp } from "@react-navigation/drawer";
+import { Ionicons } from "@expo/vector-icons";
 import {
   CustomButton,
   CustomInput,
@@ -376,7 +377,7 @@ export function SupplierBillingScreen() {
         ]}
       >
         <View style={styles.cardHeader}>
-          <Text style={styles.cardIcon}>📄</Text>
+          <Ionicons name="document-text-outline" size={16} color={colors.text} />
           <Text style={[styles.cardTitle, { color: colors.text }]}>
             Invoice Metadata
           </Text>
@@ -451,7 +452,7 @@ export function SupplierBillingScreen() {
         ]}
       >
         <View style={styles.cardHeader}>
-          <Text style={styles.cardIcon}>🛍️</Text>
+          <Ionicons name="bag-add-outline" size={16} color={colors.text} />
           <Text style={[styles.cardTitle, { color: colors.text }]}>
             Quick Add Product
           </Text>
@@ -476,10 +477,11 @@ export function SupplierBillingScreen() {
 
         {selectedProduct && (
           <View
-            style={[styles.stockBadge, { backgroundColor: colors.infoLight }]}
+            style={[styles.stockBadge, { backgroundColor: colors.infoLight, flexDirection: "row", alignItems: "center", gap: 6 }]}
           >
+            <Ionicons name="cube-outline" size={14} color={colors.info} />
             <Text style={[styles.stockText, { color: colors.info }]}>
-              📦 Stock Available: {selectedProduct.stockQuantity} units
+              Stock Available: {selectedProduct.stockQuantity} units
             </Text>
           </View>
         )}
@@ -534,11 +536,12 @@ export function SupplierBillingScreen() {
             { backgroundColor: colors.card, borderColor: colors.border },
           ]}
         >
-          <View style={styles.receiptHeader}>
+          <View style={[styles.receiptHeader, { flexDirection: "row", alignItems: "center", gap: 6 }]}>
+            <Ionicons name="receipt-outline" size={14} color={colors.textSecondary} />
             <Text
               style={[styles.receiptTitle, { color: colors.textSecondary }]}
             >
-              🧾 Invoice Items ({items.length})
+              Invoice Items ({items.length})
             </Text>
           </View>
 
@@ -596,15 +599,7 @@ export function SupplierBillingScreen() {
                     pressed && { opacity: 0.7 },
                   ]}
                 >
-                  <Text
-                    style={{
-                      color: colors.error,
-                      fontSize: 13,
-                      fontWeight: "700",
-                    }}
-                  >
-                    ✕
-                  </Text>
+                  <Ionicons name="close" size={14} color={colors.error} />
                 </Pressable>
               </View>
             </View>
@@ -631,7 +626,7 @@ export function SupplierBillingScreen() {
         <EmptyState
           title="No Items Added Yet"
           message="Select products, enter quantities and purchase price to populate this bill invoice."
-          icon="🧾"
+          icon="receipt-outline"
         />
       )}
 
@@ -643,7 +638,7 @@ export function SupplierBillingScreen() {
         ]}
       >
         <View style={styles.cardHeader}>
-          <Text style={styles.cardIcon}>📝</Text>
+          <Ionicons name="create-outline" size={16} color={colors.text} />
           <Text style={[styles.cardTitle, { color: colors.text }]}>
             Memo / Reference Notes
           </Text>
@@ -664,11 +659,12 @@ export function SupplierBillingScreen() {
           <View
             style={[
               styles.errorContainer,
-              { backgroundColor: colors.errorLight, borderColor: colors.error },
+              { backgroundColor: colors.errorLight, borderColor: colors.error, flexDirection: "row", alignItems: "center", gap: 6 },
             ]}
           >
+            <Ionicons name="warning-outline" size={14} color={colors.error} />
             <Text style={[styles.errorText, { color: colors.error }]}>
-              ⚠️ {errors.items}
+              {errors.items}
             </Text>
           </View>
         ) : null}
@@ -676,8 +672,8 @@ export function SupplierBillingScreen() {
         <CustomButton
           title={
             isEditMode
-              ? "💾 Update Purchase Invoice"
-              : "💾 Save Purchase Invoice"
+              ? "Update Purchase Invoice"
+              : "Save Purchase Invoice"
           }
           onPress={handleSave}
           loading={loading}
@@ -732,9 +728,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 14,
     gap: 8,
-  },
-  cardIcon: {
-    fontSize: 16,
   },
   cardTitle: {
     fontSize: 14,

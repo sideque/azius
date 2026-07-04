@@ -1,19 +1,22 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../theme/ThemeContext';
+
+type IoniconsName = keyof typeof Ionicons.glyphMap;
 
 interface Props {
   title?: string;
   message?: string;
-  icon?: string;
+  icon?: IoniconsName;
 }
 
-export function EmptyState({ title = 'No Data', message = 'Nothing to display yet', icon = '📭' }: Props) {
+export function EmptyState({ title = 'No Data', message = 'Nothing to display yet', icon = 'file-tray-outline' }: Props) {
   const { colors } = useTheme();
   return (
     <View style={styles.container}>
       <View style={[styles.iconWrap, { backgroundColor: colors.background }]}>
-        <Text style={styles.icon}>{icon}</Text>
+        <Ionicons name={icon} size={40} color={colors.textMuted} />
       </View>
       <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
       <Text style={[styles.message, { color: colors.textMuted }]}>{message}</Text>
@@ -31,7 +34,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 20,
   },
-  icon: { fontSize: 44 },
   title: { fontSize: 18, fontWeight: '700', letterSpacing: -0.3 },
   message: { fontSize: 14, marginTop: 8, textAlign: 'center', lineHeight: 20, maxWidth: 260 },
 });

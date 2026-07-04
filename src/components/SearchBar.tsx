@@ -1,5 +1,6 @@
 import React from 'react';
-import { StyleSheet, Text, TextInput, View } from 'react-native';
+import { StyleSheet, TextInput, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../theme/ThemeContext';
 
 interface Props {
@@ -12,7 +13,7 @@ export function SearchBar({ value, onChangeText, placeholder = 'Search...' }: Pr
   const { colors } = useTheme();
   return (
     <View style={[styles.container, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-      <Text style={[styles.icon, { color: colors.textMuted }]}>🔍</Text>
+      <Ionicons name="search" size={16} color={colors.textMuted} style={styles.icon} />
       <TextInput
         value={value}
         onChangeText={onChangeText}
@@ -39,6 +40,6 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 1,
   },
-  icon: { fontSize: 15, marginRight: 8 },
+  icon: { marginRight: 8 },
   input: { flex: 1, paddingVertical: 13, fontSize: 15, fontWeight: '400' },
 });

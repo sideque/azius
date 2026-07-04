@@ -457,6 +457,7 @@ import {
 } from "react-native";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { DrawerNavigationProp } from "@react-navigation/drawer";
+import { Ionicons } from "@expo/vector-icons";
 import {
   CustomButton,
   Dropdown,
@@ -733,9 +734,7 @@ export function SupplierReportsScreen() {
                 },
               ]}
             >
-              <Text style={[styles.typeBadgeIcon, { color: accent }]}>
-                {isBill ? "↓" : "↑"}
-              </Text>
+              <Ionicons name={isBill ? "arrow-down" : "arrow-up"} size={14} color={accent} />
             </View>
             <View style={styles.ledgerHeaderText}>
               <Text style={[styles.ledgerReference, { color: colors.text }]}>
@@ -943,7 +942,7 @@ export function SupplierReportsScreen() {
         <EmptyState
           title="Select a supplier"
           message="Choose a supplier to view purchase and payment history."
-          icon="🏭"
+          icon="business-outline"
         />
       ) : (
         <>
@@ -1172,7 +1171,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  typeBadgeIcon: { fontSize: 14, fontWeight: "800" },
   ledgerHeaderText: { flex: 1, marginLeft: 10 },
   ledgerReference: { fontSize: 14, fontWeight: "700" },
   ledgerDate: { fontSize: 11, marginTop: 2 },

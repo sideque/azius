@@ -948,181 +948,6 @@ export async function deleteSupplierBill(billId: string): Promise<void> {
   });
 }
 
-// Sales
-// export async function createSale(
-//   shopId: string,
-//   items: {
-//     productId: string;
-//     quantity: number;
-//     rate: number;
-//     purchasePrice: number;
-//   }[],
-//   discount: number,
-// ): Promise<SaleWithDetails> {
-//   const saleId = generateId();
-//   const invoiceNumber = generateInvoiceNumber();
-//   const createdAt = toISOString();
-//   const saleItems: SaleItem[] = [];
-//   const productSnapshotMap: Record<string, Product> = {};
-
-//   const { ref: shopRef, shop: resolvedShop } =
-//     await resolveShopDocument(shopId);
-//   if (!resolvedShop) throw new Error("Shop not found");
-
-//   const resolvedShopId = resolvedShop.id;
-
-//   await runTransaction(db, async (transaction) => {
-//     const shopSnap = await transaction.get(shopRef);
-//     if (!shopSnap.exists()) throw new Error("Shop not found");
-//     const shopData = shopSnap.data() as Shop;
-
-//     const productSnapshots = await Promise.all(
-//       items.map((item) =>
-//         transaction.get(doc(productsCollection, item.productId)),
-//       ),
-//     );
-
-//     for (let i = 0; i < items.length; i += 1) {
-//       const item = items[i];
-//       const productSnap = productSnapshots[i];
-//       if (!productSnap.exists()) {
-//         throw new Error(`Product not found: ${item.productId}`);
-//       }
-//       const product = productSnap.data() as Product;
-//       const normalizedQuantity = Number(item.quantity) || 0;
-//       const availableStock = Number(product.stockQuantity) || 0;
-//       const normalizedRate = Number(item.rate) || 0;
-//       const normalizedPurchasePrice = Number(item.purchasePrice) || 0;
-
-//       if (!Number.isFinite(normalizedQuantity) || normalizedQuantity <= 0) {
-//         throw new Error("Each item must have a valid quantity");
-//       }
-
-//       productSnapshotMap[item.productId] = {
-//         ...product,
-//         stockQuantity: availableStock,
-//         purchasePrice: normalizedPurchasePrice,
-//         sellingPrice: normalizedRate,
-//       };
-
-//       if (normalizedQuantity > availableStock) {
-//         throw new Error(
-//           `Insufficient stock for ${product.productName}. Available: ${availableStock}`,
-//         );
-//       }
-//     }
-
-//     const normalizedDiscount = Number(discount) || 0;
-//     const subtotal = items.reduce(
-//       (sum, item) => sum + Number(item.quantity) * Number(item.rate),
-//       0,
-//     );
-//     const grandTotal = Math.max(0, subtotal - normalizedDiscount);
-//     const itemProfit = items.reduce(
-//       (sum, item) =>
-//         sum +
-//         (Number(item.rate) - Number(item.purchasePrice)) *
-//           Number(item.quantity),
-//       0,
-//     );
-//     const profit =
-//       subtotal > 0 ? itemProfit * (grandTotal / subtotal) : itemProfit;
-//     const currentOutstandingBalance = Number(shopData.outstandingBalance) || 0;
-//     const newBalance = currentOutstandingBalance + grandTotal;
-
-//     transaction.set(doc(salesCollection, saleId), {
-//       id: saleId,
-//       invoiceNumber,
-//       shopId: resolvedShopId,
-//       subtotal,
-//       discount,
-//       grandTotal,
-//       profit,
-//       createdAt,
-//     });
-
-//     for (let i = 0; i < items.length; i += 1) {
-//       const item = items[i];
-//       const productSnap = productSnapshots[i];
-//       if (!productSnap.exists()) {
-//         continue;
-//       }
-//       const product = productSnap.data() as Product;
-//       const normalizedQuantity = Number(item.quantity) || 0;
-//       const normalizedRate = Number(item.rate) || 0;
-//       const itemId = generateId();
-//       const total = normalizedQuantity * normalizedRate;
-//       transaction.set(doc(saleItemsCollection, itemId), {
-//         id: itemId,
-//         saleId,
-//         productId: item.productId,
-//         quantity: normalizedQuantity,
-//         rate: normalizedRate,
-//         total,
-//       });
-//       const currentStock = Number(product.stockQuantity) || 0;
-//       transaction.update(doc(productsCollection, item.productId), {
-//         stockQuantity: Math.max(0, currentStock - normalizedQuantity),
-//       });
-//       saleItems.push({
-//         id: itemId,
-//         saleId,
-//         productId: item.productId,
-//         quantity: normalizedQuantity,
-//         rate: normalizedRate,
-//         total,
-//       });
-//     }
-
-//     transaction.update(shopRef, { outstandingBalance: newBalance });
-//     transaction.set(doc(ledgersCollection, generateId()), {
-//       id: generateId(),
-//       shopId: resolvedShopId,
-//       transactionType: "sale",
-//       referenceNumber: invoiceNumber,
-//       debit: grandTotal,
-//       credit: 0,
-//       balance: newBalance,
-//       createdAt,
-//     });
-//   });
-
-//   // Ensure every ledger row for this shop reflects the correct running
-//   // balance (guards against out-of-order writes / concurrent edits).
-//   await recalculateShopLedgerBalances(resolvedShopId);
-
-//   const persistedShop = await getShopById(shopId);
-//   const shopName = persistedShop?.shopName ?? "";
-//   const saleItemsWithName = await Promise.all(
-//     saleItems.map(async (item) => {
-//       const product = await getProductById(item.productId);
-//       return {
-//         ...item,
-//         productName: product?.productName ?? "",
-//       };
-//     }),
-//   );
-
-//   return {
-//     id: saleId,
-//     invoiceNumber,
-//     shopId: resolvedShopId,
-//     subtotal: saleItems.reduce((sum, item) => sum + item.total, 0),
-//     discount,
-//     grandTotal: saleItems.reduce((sum, item) => sum + item.total, 0) - discount,
-//     profit: saleItemsWithName.reduce(
-//       (sum, item) =>
-//         sum +
-//         (item.rate - (productSnapshotMap[item.productId]?.purchasePrice ?? 0)) *
-//           item.quantity,
-//       0,
-//     ),
-//     createdAt,
-//     shopName,
-//     items: saleItemsWithName,
-//   };
-// }
-
 export async function createSale(
   shopId: string,
   items: {
@@ -1790,58 +1615,89 @@ export async function getSaleByInvoiceNumber(
   };
 }
 
+
 export async function deleteSale(saleId: string): Promise<void> {
   let affectedShopId: string | null = null;
 
   await runTransaction(db, async (transaction) => {
     const saleRef = doc(salesCollection, saleId);
     const saleSnap = await transaction.get(saleRef);
-    if (!saleSnap.exists()) throw new Error("Sale not found");
+
+    if (!saleSnap.exists()) {
+      throw new Error("Sale not found");
+    }
+
     const saleData = saleSnap.data() as Sale;
     affectedShopId = saleData.shopId;
 
+    // Read shop
     const shopRef = doc(shopsCollection, saleData.shopId);
     const shopSnap = await transaction.get(shopRef);
-    if (shopSnap.exists()) {
-      const shopData = shopSnap.data() as Shop;
-      const newBalance = Math.max(
-        0,
-        (shopData.outstandingBalance ?? 0) - saleData.grandTotal,
-      );
-      transaction.update(shopRef, { outstandingBalance: newBalance });
-    }
 
+    // Read sale items
     const itemsSnap = await getDocs(
-      query(saleItemsCollection, where("saleId", "==", saleId)),
+      query(saleItemsCollection, where("saleId", "==", saleId))
     );
-    for (const itemDoc of itemsSnap.docs) {
-      const itemData = itemDoc.data() as SaleItem;
-      const productRef = doc(productsCollection, itemData.productId);
-      const productSnap = await transaction.get(productRef);
-      if (productSnap.exists()) {
-        const currentStock = Number(productSnap.data().stockQuantity) || 0;
-        transaction.update(productRef, {
-          stockQuantity: currentStock + itemData.quantity,
-        });
-      }
-      transaction.delete(itemDoc.ref);
-    }
 
+    // Read all products BEFORE any update
+    const productReads = await Promise.all(
+      itemsSnap.docs.map(async (itemDoc) => {
+        const itemData = itemDoc.data() as SaleItem;
+        const productRef = doc(productsCollection, itemData.productId);
+        const productSnap = await transaction.get(productRef);
+
+        return {
+          itemDoc,
+          itemData,
+          productRef,
+          productSnap,
+        };
+      })
+    );
+
+    // Read ledger docs BEFORE any delete
     const ledgerSnap = await getDocs(
       query(
         ledgersCollection,
-        where("referenceNumber", "==", saleData.invoiceNumber),
-      ),
+        where("referenceNumber", "==", saleData.invoiceNumber)
+      )
     );
-    for (const lDoc of ledgerSnap.docs) {
-      transaction.delete(lDoc.ref);
+
+    // -----------------------
+    // START WRITES
+    // -----------------------
+
+    if (shopSnap.exists()) {
+      const shopData = shopSnap.data() as Shop;
+
+      transaction.update(shopRef, {
+        outstandingBalance: Math.max(
+          0,
+          (shopData.outstandingBalance ?? 0) - saleData.grandTotal
+        ),
+      });
+    }
+
+    for (const product of productReads) {
+      if (product.productSnap.exists()) {
+        const stock =
+          Number(product.productSnap.data().stockQuantity) || 0;
+
+        transaction.update(product.productRef, {
+          stockQuantity: stock + product.itemData.quantity,
+        });
+      }
+
+      transaction.delete(product.itemDoc.ref);
+    }
+
+    for (const ledger of ledgerSnap.docs) {
+      transaction.delete(ledger.ref);
     }
 
     transaction.delete(saleRef);
   });
 
-  // The shop's remaining ledger entries need their running balance
-  // recomputed now that this sale's debit entry is gone.
   if (affectedShopId) {
     await recalculateShopLedgerBalances(affectedShopId);
   }

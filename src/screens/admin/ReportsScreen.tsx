@@ -11,7 +11,14 @@ import {
   Alert,
 } from "react-native";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
-import { Dropdown, SummaryCard, Modal, CustomButton, InvoiceCard, PaymentCard } from "../../components";
+import {
+  Dropdown,
+  SummaryCard,
+  Modal,
+  CustomButton,
+  InvoiceCard,
+  PaymentCard,
+} from "../../components";
 import { useAppDispatch, useAppSelector } from "../../store/hooks";
 import {
   fetchPaymentReport,
@@ -21,7 +28,12 @@ import { fetchLedger } from "../../store/slices/ledgerSlice";
 import { fetchShops } from "../../store/slices/shopSlice";
 import { useTheme } from "../../theme/ThemeContext";
 import { formatCurrency, getDateRange } from "../../utils/formatters";
-import { ReportFilter, LedgerEntry, SaleWithDetails, Payment } from "../../types";
+import {
+  ReportFilter,
+  LedgerEntry,
+  SaleWithDetails,
+  Payment,
+} from "../../types";
 import { LedgerCard } from "../../components";
 import { removeSale } from "../../store/slices/salesSlice";
 import { removePayment } from "../../store/slices/paymentSlice";
@@ -33,12 +45,15 @@ export function ReportsScreen() {
   const { colors, isDark } = useTheme();
   const navigation = useNavigation<any>();
   const dispatch = useAppDispatch();
-  const { salesReport, paymentReport, paymentReportShopWise } = useAppSelector((s) => s.reports);
+  const { salesReport, paymentReport, paymentReportShopWise } = useAppSelector(
+    (s) => s.reports,
+  );
   const shops = useAppSelector((s) => s.shops.items);
   const ledgerEntries = useAppSelector((s) => s.ledger.entries);
   const sortedLedgerEntries = React.useMemo(() => {
     return [...ledgerEntries].sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
     );
   }, [ledgerEntries]);
   const [tab, setTab] = useState<Tab>("sales");
@@ -48,16 +63,11 @@ export function ReportsScreen() {
 
   // Ledger entry viewing state
   const [selectedEntry, setSelectedEntry] = useState<LedgerEntry | null>(null);
-  const [entryDetails, setEntryDetails] = useState<SaleWithDetails | (Payment & { shopName: string }) | null>(null);
+  const [entryDetails, setEntryDetails] = useState<
+    SaleWithDetails | (Payment & { shopName: string }) | null
+  >(null);
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
-  // const load = useCallback(() => {
-  //   dispatch(fetchShops());
-  //   const filter: ReportFilter = { period, shopId: shopId || undefined };
-  //   dispatch(fetchSalesReport(filter));
-  //   dispatch(fetchPaymentReport(filter));
-  //   if (shopId) dispatch(fetchLedger({ shopId }));
-  // }, [dispatch, period, shopId]);
   const load = useCallback(async () => {
     setLoading(true);
     const filter: ReportFilter = {
@@ -71,7 +81,9 @@ export function ReportsScreen() {
         dispatch(fetchShops()),
         dispatch(fetchSalesReport(filter)),
         dispatch(fetchPaymentReport(filter)),
-        shopId ? dispatch(fetchLedger({ shopId, startDate, endDate })) : Promise.resolve(),
+        shopId
+          ? dispatch(fetchLedger({ shopId, startDate, endDate }))
+          : Promise.resolve(),
       ]);
     } finally {
       setLoading(false);
@@ -109,7 +121,9 @@ export function ReportsScreen() {
         const details = await db.getSaleByInvoiceNumber(entry.referenceNumber);
         setEntryDetails(details);
       } else {
-        const details = await db.getPaymentByReceiptNumber(entry.referenceNumber);
+        const details = await db.getPaymentByReceiptNumber(
+          entry.referenceNumber,
+        );
         setEntryDetails(details);
       }
     } catch (e) {
@@ -124,10 +138,20 @@ export function ReportsScreen() {
     try {
       if (entry.transactionType === "sale") {
         const details = await db.getSaleByInvoiceNumber(entry.referenceNumber);
-        if (details) navigation.navigate("EditSale", { saleId: details.id, invoiceNumber: details.invoiceNumber });
+        if (details)
+          navigation.navigate("EditSale", {
+            saleId: details.id,
+            invoiceNumber: details.invoiceNumber,
+          });
       } else {
-        const details = await db.getPaymentByReceiptNumber(entry.referenceNumber);
-        if (details) navigation.navigate("EditPayment", { paymentId: details.id, receiptNumber: details.receiptNumber });
+        const details = await db.getPaymentByReceiptNumber(
+          entry.referenceNumber,
+        );
+        if (details)
+          navigation.navigate("EditPayment", {
+            paymentId: details.id,
+            receiptNumber: details.receiptNumber,
+          });
       }
     } catch (e) {
       Alert.alert("Error", "Could not load edit screen");
@@ -146,17 +170,21 @@ export function ReportsScreen() {
           text: "Delete",
           style: "destructive",
           onPress: async () => {
+            let targetId: string | number | undefined = entryDetails?.id;
             try {
-              let targetId = entryDetails?.id;
               // If we are deleting directly from the card and don't have details loaded yet
               if (!targetId || selectedEntry?.id !== entry.id) {
-                 if (entry.transactionType === "sale") {
-                   const details = await db.getSaleByInvoiceNumber(entry.referenceNumber);
-                   targetId = details?.id;
-                 } else {
-                   const details = await db.getPaymentByReceiptNumber(entry.referenceNumber);
-                   targetId = details?.id;
-                 }
+                if (entry.transactionType === "sale") {
+                  const details = await db.getSaleByInvoiceNumber(
+                    entry.referenceNumber,
+                  );
+                  targetId = details?.id;
+                } else {
+                  const details = await db.getPaymentByReceiptNumber(
+                    entry.referenceNumber,
+                  );
+                  targetId = details?.id;
+                }
               }
 
               if (!targetId) throw new Error("Could not find record to delete");
@@ -169,11 +197,17 @@ export function ReportsScreen() {
               setShowDetailsModal(false);
               load(); // Reload reports and ledger
             } catch (e: any) {
-              Alert.alert("Error", e?.message || "Failed to delete");
+              console.log("DELETE ERROR =>", e);
+              console.log("TARGET ID =>", targetId );
+
+              Alert.alert(
+                "Error",
+                typeof e === "string" ? e : e?.message || JSON.stringify(e),
+              );
             }
           },
         },
-      ]
+      ],
     );
   };
 
@@ -188,7 +222,12 @@ export function ReportsScreen() {
         />
       }
     >
-      <View style={[styles.tabs, { backgroundColor: isDark ? colors.border : '#E2E8F0' }]}>
+      <View
+        style={[
+          styles.tabs,
+          { backgroundColor: isDark ? colors.border : "#E2E8F0" },
+        ]}
+      >
         {(["sales", "payments", "ledger"] as Tab[]).map((t) => (
           <Pressable
             key={t}
@@ -278,12 +317,22 @@ export function ReportsScreen() {
             value={formatCurrency(paymentReport.pending)}
             color={colors.errorLight}
           />
-          <Text style={[styles.section, { color: colors.text }]}>Shop-wise Payments</Text>
+          <Text style={[styles.section, { color: colors.text }]}>
+            Shop-wise Payments
+          </Text>
           {/** show bar chart and list like sales */}
           {paymentReportShopWise.map((s, i) => (
-            <View key={i} style={[styles.row, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View
+              key={i}
+              style={[
+                styles.row,
+                { backgroundColor: colors.card, borderColor: colors.border },
+              ]}
+            >
               <Text style={{ color: colors.text, flex: 1 }}>{s.shopName}</Text>
-              <Text style={{ color: colors.primary, fontWeight: '700' }}>{formatCurrency(s.total)}</Text>
+              <Text style={{ color: colors.primary, fontWeight: "700" }}>
+                {formatCurrency(s.total)}
+              </Text>
             </View>
           ))}
         </>
@@ -315,27 +364,66 @@ export function ReportsScreen() {
         </>
       )}
       {loading && (
-        <ActivityIndicator size="large" color={colors.primary} style={{ marginVertical: 20 }} />
+        <ActivityIndicator
+          size="large"
+          color={colors.primary}
+          style={{ marginVertical: 20 }}
+        />
       )}
       <View style={{ height: 24 }} />
 
-      <Modal visible={showDetailsModal} title={`${selectedEntry?.transactionType === 'sale' ? 'Sale' : 'Payment'} Details`} onClose={() => setShowDetailsModal(false)}>
+      <Modal
+        visible={showDetailsModal}
+        title={`${selectedEntry?.transactionType === "sale" ? "Sale" : "Payment"} Details`}
+        onClose={() => setShowDetailsModal(false)}
+      >
         {detailsLoading ? (
-          <ActivityIndicator size="large" color={colors.primary} style={{ marginVertical: 20 }} />
+          <ActivityIndicator
+            size="large"
+            color={colors.primary}
+            style={{ marginVertical: 20 }}
+          />
         ) : entryDetails ? (
           <View>
-            {selectedEntry?.transactionType === 'sale' ? (
+            {selectedEntry?.transactionType === "sale" ? (
               <InvoiceCard sale={entryDetails as SaleWithDetails} />
             ) : (
               <PaymentCard payment={entryDetails as any} />
             )}
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 16 }}>
-              <CustomButton title="Delete" onPress={() => handleDeleteEntry(selectedEntry)} style={{ backgroundColor: colors.error, flex: 1, marginRight: 8 }} />
-              <CustomButton title="Close" onPress={() => setShowDetailsModal(false)} variant="outline" style={{ flex: 1, marginLeft: 8 }} />
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "space-between",
+                marginTop: 16,
+              }}
+            >
+              <CustomButton
+                title="Delete"
+                onPress={() => handleDeleteEntry(selectedEntry)}
+                style={{
+                  backgroundColor: colors.error,
+                  flex: 1,
+                  marginRight: 8,
+                }}
+              />
+              <CustomButton
+                title="Close"
+                onPress={() => setShowDetailsModal(false)}
+                variant="outline"
+                style={{ flex: 1, marginLeft: 8 }}
+              />
             </View>
           </View>
         ) : (
-          <Text style={{ color: colors.textSecondary, textAlign: 'center', marginVertical: 20 }}>Details not found</Text>
+          <Text
+            style={{
+              color: colors.textSecondary,
+              textAlign: "center",
+              marginVertical: 20,
+            }}
+          >
+            Details not found
+          </Text>
         )}
       </Modal>
     </ScrollView>
@@ -344,11 +432,11 @@ export function ReportsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16 },
-  tabs: { 
-    flexDirection: "row", 
-    marginBottom: 20, 
-    backgroundColor: '#F1F5F9', // light neutral bg for segments
-    padding: 4, 
+  tabs: {
+    flexDirection: "row",
+    marginBottom: 20,
+    backgroundColor: "#F1F5F9", // light neutral bg for segments
+    padding: 4,
     borderRadius: 14,
   },
   tab: {
@@ -357,12 +445,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderRadius: 10,
   },
-  section: { 
-    fontSize: 15, 
-    fontWeight: "800", 
-    marginTop: 24, 
-    marginBottom: 12, 
-    textTransform: 'uppercase', 
+  section: {
+    fontSize: 15,
+    fontWeight: "800",
+    marginTop: 24,
+    marginBottom: 12,
+    textTransform: "uppercase",
     letterSpacing: 0.6,
   },
   row: {

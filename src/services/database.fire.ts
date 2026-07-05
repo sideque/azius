@@ -1099,7 +1099,7 @@ export async function createSale(
       const product = await getProductById(item.productId);
       return {
         ...item,
-        productName: product?.productName ?? "",
+        productName: product?.productName ?? "Unknown Product",
       };
     }),
   );
@@ -1602,7 +1602,7 @@ export async function getSaleByInvoiceNumber(
       const product = await getProductById(item.productId);
       return {
         ...item,
-        productName: product?.productName ?? "",
+        productName: product?.productName ?? "Unknown Product",
       } as SaleItem & { productName: string };
     }),
   );

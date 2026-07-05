@@ -1,6 +1,11 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
+import {
+  useFocusEffect,
+  useNavigation,
+  useRoute,
+  RouteProp,
+} from "@react-navigation/native";
 import { DrawerNavigationProp } from "@react-navigation/drawer";
 import { Ionicons } from "@expo/vector-icons";
 import {
@@ -48,6 +53,12 @@ export function SupplierBillingScreen() {
   const route = useRoute<RouteProp<AdminDrawerParamList, "SupplierBilling">>();
   const billId = route.params?.billId;
   const isEditMode = Boolean(billId);
+
+  // Read inside the focus effect via ref (not as a hook dependency) so that
+  // clearing this same param after loading doesn't itself re-trigger the
+  // effect and wipe the data we just loaded.
+  const billIdRef = useRef(billId);
+  billIdRef.current = billId;
 
   const selectedSupplier = useMemo(
     () => suppliers.find((supplier) => supplier.id === selectedSupplierId),
@@ -134,51 +145,79 @@ export function SupplierBillingScreen() {
     }
   };
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  const resetForm = () => {
+    setSelectedSupplierId("");
+    setSelectedProductId("");
+    setQuantity("");
+    setPurchasePrice("");
+    setSellingPrice("");
+    setNotes("");
+    setBillDate(new Date());
+    setItems([]);
+    setOriginalItems([]);
+    setErrors({});
+  };
 
-  useEffect(() => {
-    const loadBill = async () => {
-      if (!billId) return;
-      try {
-        const bill = await getSupplierBill(billId);
-        if (!bill) {
-          showToast("Supplier bill not found", "error");
-          return;
-        }
-
-        const normalizedItems = bill.items.map((item) => {
-          const purchasePrice = Number(item.purchasePrice ?? 0);
-          const sellingPrice = Number(
-            item.sellingPrice ?? item.purchasePrice ?? purchasePrice,
-          );
-          const quantity = Number(item.quantity ?? 0);
-          const total = Number(
-            item.total ?? Math.max(0, purchasePrice * quantity),
-          );
-
-          return {
-            ...item,
-            purchasePrice,
-            sellingPrice,
-            quantity,
-            total,
-            productName: item.productName ?? "Unknown Product",
-          };
-        });
-
-        setSelectedSupplierId(bill.supplierId);
-        setBillDate(new Date(bill.billDate));
-        setNotes(bill.notes);
-        setItems(normalizedItems);
-        setOriginalItems(normalizedItems);
-      } catch (error) {
-        showToast("Failed to load supplier bill", "error");
+  const loadBill = async (id: string) => {
+    try {
+      const bill = await getSupplierBill(id);
+      if (!bill) {
+        showToast("Supplier bill not found", "error");
+        return;
       }
-    };
-    loadBill();
-  }, [billId, showToast]);
+
+      const normalizedItems = bill.items.map((item) => {
+        const purchasePrice = Number(item.purchasePrice ?? 0);
+        const sellingPrice = Number(
+          item.sellingPrice ?? item.purchasePrice ?? purchasePrice,
+        );
+        const quantity = Number(item.quantity ?? 0);
+        const total = Number(
+          item.total ?? Math.max(0, purchasePrice * quantity),
+        );
+
+        return {
+          ...item,
+          purchasePrice,
+          sellingPrice,
+          quantity,
+          total,
+          productName: item.productName ?? "Unknown Product",
+        };
+      });
+
+      setSelectedSupplierId(bill.supplierId);
+      setBillDate(new Date(bill.billDate));
+      setNotes(bill.notes);
+      setItems(normalizedItems);
+      setOriginalItems(normalizedItems);
+    } catch (error) {
+      showToast("Failed to load supplier bill", "error");
+    }
+  };
+
+  // Runs every time the screen gains focus (Drawer screens stay mounted, so a
+  // plain mount-only effect wouldn't reset stale data from a previous edit).
+  // Depends on nothing so it only fires on actual focus/blur transitions —
+  // reading billId via ref avoids re-triggering itself when it clears that
+  // same param below (which would otherwise wipe the bill it just loaded).
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+
+      const currentBillId = billIdRef.current;
+      if (currentBillId) {
+        loadBill(currentBillId).then(() => {
+          // Clear the param once consumed so a later fresh visit to this
+          // screen (e.g. via the drawer, to create a new bill) doesn't keep
+          // reloading/showing this bill's data.
+          navigation.setParams({ billId: undefined } as any);
+        });
+      } else {
+        resetForm();
+      }
+    }, []),
+  );
 
   const addItem = () => {
     const product = selectedProduct;
@@ -324,11 +363,13 @@ export function SupplierBillingScreen() {
           ? "Supplier bill updated and stock adjusted"
           : "Supplier bill saved and stock updated",
       );
-      setItems([]);
-      setNotes("");
-      setBillDate(new Date());
-      setSelectedSupplierId("");
-      setSelectedProductId("");
+      resetForm();
+      if (billId) {
+        // End the edit session so refocusing this screen later (e.g. via the
+        // drawer, to create a new bill) starts fresh instead of reloading
+        // the bill we just saved.
+        navigation.setParams({ billId: undefined } as any);
+      }
       loadData();
     } catch (error) {
       showToast("Failed to save supplier bill", "error");

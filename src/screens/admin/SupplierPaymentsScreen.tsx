@@ -242,10 +242,7 @@ export function SupplierPaymentsScreen() {
               fontWeight: "700",
             }}
           >
-            {formatCurrency(
-              (selectedSupplier.openingBalance ?? 0) +
-              (selectedSupplier.outstandingBalance ?? 0),
-            )}
+            {formatCurrency(selectedSupplier.outstandingBalance ?? 0)}
           </Text>
         </View>
       )}

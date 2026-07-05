@@ -61,7 +61,7 @@ export function InvoiceCard({
       {sale.items.map((item) => (
         <View key={item.id} style={{ marginBottom: 8 }}>
           <Text style={[styles.itemName, { color: colors.text, fontWeight: "600" }]}>
-            {item.productName}
+            {item.productName || "Unknown Product"}
           </Text>
           <View style={styles.itemRow}>
             <Text style={{ color: colors.textSecondary, fontSize: 12, marginTop: 2 }}>
@@ -362,7 +362,7 @@ const styles = StyleSheet.create({
   dateText: { fontSize: 12 },
   shopName: { fontSize: 15, fontWeight: "700", marginTop: 8 },
   itemRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 },
-  itemName: { flex: 1, fontSize: 13, marginRight: 8 },
+  itemName: { fontSize: 13, marginRight: 8 },
   itemTotal: { fontSize: 13, fontWeight: '600' },
   totalRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 4 },
   grandRow: { marginTop: 4 },

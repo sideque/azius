@@ -1,10 +1,10 @@
 {
   "expo": {
-    "name": "Azius",
+    "name": "SaifMarketing",
     "slug": "Azius",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/ChatGPT Image Jul 5, 2026, 07_44_17 AM.png",
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true
@@ -16,7 +16,8 @@
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.ameeralivk.Azius"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -24,7 +25,13 @@
     "plugins": [
       "expo-asset",
       "expo-sqlite",
-      "expo-sharing"
-    ]
+      "expo-sharing",
+      "expo-font"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "2e56535e-ce30-4c20-b8c8-8b06bec32740"
+      }
+    }
   }
 }

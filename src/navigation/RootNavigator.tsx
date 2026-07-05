@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { AuthStackParamList } from "./types";
@@ -7,7 +7,7 @@ import { LoginScreen } from "../screens/auth/LoginScreen";
 import { RoleSelectionScreen } from "../screens/auth/RoleSelectionScreen";
 import { AdminNavigator } from "./AdminNavigator";
 import { SalesNavigator } from "./SalesNavigator";
-import { useAppDispatch } from "../store/hooks";
+import { useAppDispatch, useAppSelector } from "../store/hooks";
 import { restoreSession, setInitialized } from "../store/slices/authSlice";
 import { getDatabase } from "../services/database";
 import { User } from "../types";
@@ -16,26 +16,38 @@ const Stack = createNativeStackNavigator<AuthStackParamList>();
 
 export function RootNavigator() {
   const dispatch = useAppDispatch();
+  const initialized = useAppSelector((state) => state.auth.initialized);
   const [showSplash, setShowSplash] = useState(true);
   const [initialRoute, setInitialRoute] =
     useState<keyof AuthStackParamList>("Login");
 
   useEffect(() => {
     (async () => {
-      await getDatabase();
-      const saved = await AsyncStorage.getItem("@auth_user");
-      if (saved) {
-        const user = JSON.parse(saved) as User;
-        dispatch(restoreSession(user));
-        setInitialRoute(user.role === "admin" ? "AdminApp" : "SalesApp");
-      } else {
-        dispatch(setInitialized());
+      try {
+        await getDatabase();
+      } catch (error) {
+        console.log("getDatabase failed during startup:", error);
       }
+
+      try {
+        const saved = await AsyncStorage.getItem("@auth_user");
+        if (saved) {
+          const user = JSON.parse(saved) as User;
+          dispatch(restoreSession(user));
+          setInitialRoute(user.role === "admin" ? "AdminApp" : "SalesApp");
+          return;
+        }
+      } catch (error) {
+        console.log("Session restore failed:", error);
+      }
+      dispatch(setInitialized());
     })();
   }, [dispatch]);
 
-  if (showSplash) {
-    return <SplashScreen onFinish={() => setShowSplash(false)} />;
+  const handleSplashFinish = useCallback(() => setShowSplash(false), []);
+
+  if (showSplash || !initialized) {
+    return <SplashScreen onFinish={handleSplashFinish} />;
   }
 
   return (

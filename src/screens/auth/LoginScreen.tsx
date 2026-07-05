@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { CustomButton, CustomInput, useToast } from "../../components";
 import { authenticateUser, getDatabase } from "../../services/database";
@@ -132,6 +133,7 @@ export function LoginScreen({ navigation }: Props) {
 
       // 4. Success
       dispatch(loginSuccess({ user, rememberMe }));
+      await AsyncStorage.setItem("@auth_user", JSON.stringify(user));
       showToast("Login successful!");
       navigation.replace("RoleSelection", { role: selectedRole });
     } catch (error) {

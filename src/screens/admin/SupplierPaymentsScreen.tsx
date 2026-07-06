@@ -1,5 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Alert, ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { useFocusEffect, useNavigation, useRoute } from "@react-navigation/native";
 import { DrawerNavigationProp } from "@react-navigation/drawer";
 import {
@@ -214,94 +222,109 @@ export function SupplierPaymentsScreen() {
   };
 
   return (
-    <ScrollView
+    <KeyboardAvoidingView
       style={[styles.container, { backgroundColor: colors.background }]}
-      keyboardShouldPersistTaps="handled"
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 80 : 0}
     >
-
-
-      <Dropdown
-        label="Supplier"
-        options={supplierOptions}
-        value={supplierId}
-        onChange={setSupplierId}
-      />
-
-      {selectedSupplier && (
-        <View
-          style={[styles.balanceCard, { backgroundColor: colors.warningLight }]}
-        >
-          <Text style={{ color: colors.textSecondary }}>
-            Outstanding Balance
-          </Text>
-
-          <Text
-            style={{
-              color: colors.warning,
-              fontSize: 24,
-              fontWeight: "700",
-            }}
-          >
-            {formatCurrency(selectedSupplier.outstandingBalance ?? 0)}
-          </Text>
-        </View>
-      )}
-
-      <CustomInput
-        label="Payment Amount"
-        value={amount}
-        onChangeText={setAmount}
-        keyboardType="decimal-pad"
-        error={errors.amount}
-      />
-
-      <Dropdown
-        label="Payment Method"
-        options={PAYMENT_METHODS}
-        value={method}
-        onChange={(value) => setMethod(value as PaymentMethod)}
-      />
-
-      <DatePickerField
-        label="Payment Date"
-        value={paymentDate}
-        onChange={setPaymentDate}
-      />
-
-      <CustomInput
-        label="Notes"
-        value={notes}
-        onChangeText={setNotes}
-        multiline
-        numberOfLines={3}
-      />
-
-      <CustomButton
-        title={isEditMode ? "Update Payment" : "Save Payment"}
-        onPress={handleSave}
-        loading={saving}
-        disabled={deleting}
-      />
-
-      {isEditMode && (
-        <CustomButton
-          title="Delete Payment"
-          onPress={handleDelete}
-          variant="danger"
-          style={{ marginTop: 12 }}
-          loading={deleting}
-          disabled={saving}
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+      >
+        <Dropdown
+          label="Supplier"
+          options={supplierOptions}
+          value={supplierId}
+          onChange={setSupplierId}
         />
-      )}
-    </ScrollView>
+
+        {selectedSupplier && (
+          <View
+            style={[styles.balanceCard, { backgroundColor: colors.warningLight }]}
+          >
+            <Text style={{ color: colors.textSecondary }}>
+              Outstanding Balance
+            </Text>
+
+            <Text
+              style={{
+                color: colors.warning,
+                fontSize: 24,
+                fontWeight: "700",
+              }}
+            >
+              {formatCurrency(selectedSupplier.outstandingBalance ?? 0)}
+            </Text>
+          </View>
+        )}
+
+        <View style={styles.row}>
+          <View style={styles.col}>
+            <CustomInput
+              label="Payment Amount"
+              value={amount}
+              onChangeText={setAmount}
+              keyboardType="decimal-pad"
+              error={errors.amount}
+            />
+          </View>
+          <View style={styles.col}>
+            <Dropdown
+              label="Payment Method"
+              options={PAYMENT_METHODS}
+              value={method}
+              onChange={(value) => setMethod(value as PaymentMethod)}
+            />
+          </View>
+        </View>
+
+        <DatePickerField
+          label="Payment Date"
+          value={paymentDate}
+          onChange={setPaymentDate}
+        />
+
+        <CustomInput
+          label="Notes"
+          value={notes}
+          onChangeText={setNotes}
+          multiline
+          numberOfLines={3}
+        />
+
+        <CustomButton
+          title={isEditMode ? "Update Payment" : "Save Payment"}
+          onPress={handleSave}
+          loading={saving}
+          disabled={deleting}
+        />
+
+        {isEditMode && (
+          <CustomButton
+            title="Delete Payment"
+            onPress={handleDelete}
+            variant="danger"
+            style={{ marginTop: 12 }}
+            loading={deleting}
+            disabled={saving}
+          />
+        )}
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 16,
   },
+  scrollContent: {
+    padding: 16,
+    paddingBottom: 40,
+  },
+  row: { flexDirection: "row", gap: 12 },
+  col: { flex: 1 },
   balanceCard: {
     padding: 16,
     borderRadius: 14,

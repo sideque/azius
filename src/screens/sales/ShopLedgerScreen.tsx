@@ -243,36 +243,6 @@ export function ShopLedgerScreen() {
               >
                 {selectedShop.address}
               </Text>
-              {/* <View style={styles.statsRow}>
-                <View style={styles.stat}>
-                  <Text style={{ color: colors.textMuted, fontSize: 11 }}>
-                    OUTSTANDING
-                  </Text>
-                  <Text
-                    style={{
-                      color: colors.warning,
-                      fontWeight: "700",
-                      fontSize: 16,
-                    }}
-                  >
-                    {formatCurrency(selectedShop.outstandingBalance)}
-                  </Text>
-                </View>
-                <View style={styles.stat}>
-                  <Text style={{ color: colors.textMuted, fontSize: 11 }}>
-                    CREDIT LIMIT
-                  </Text>
-                  <Text
-                    style={{
-                      color: colors.text,
-                      fontWeight: "700",
-                      fontSize: 16,
-                    }}
-                  >
-                    {formatCurrency(selectedShop.creditLimit)}
-                  </Text>
-                </View>
-              </View> */}
               <View style={styles.statsRow}>
                 <View style={styles.stat}>
                   <Text style={{ color: colors.textMuted, fontSize: 11 }}>
@@ -291,6 +261,16 @@ export function ShopLedgerScreen() {
 
                 <View style={styles.stat}>
                   <Text style={{ color: colors.textMuted, fontSize: 11 }}>
+                    LAST PURCHASE
+                  </Text>
+                  <Text style={{ color: colors.text, fontSize: 13 }}>
+                    {lastSale ? formatDate(lastSale.createdAt) : "N/A"}
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.statsRow}>
+                <View style={styles.stat}>
+                  <Text style={{ color: colors.textMuted, fontSize: 11 }}>
                     OUTSTANDING
                   </Text>
                   <Text
@@ -301,31 +281,6 @@ export function ShopLedgerScreen() {
                     }}
                   >
                     {formatCurrency(currentOutstanding)}
-                  </Text>
-                </View>
-
-                <View style={styles.stat}>
-                  <Text style={{ color: colors.textMuted, fontSize: 11 }}>
-                    CREDIT LIMIT
-                  </Text>
-                  <Text
-                    style={{
-                      color: colors.text,
-                      fontWeight: "700",
-                      fontSize: 16,
-                    }}
-                  >
-                    {formatCurrency(selectedShop.creditLimit)}
-                  </Text>
-                </View>
-              </View>
-              <View style={styles.statsRow}>
-                <View style={styles.stat}>
-                  <Text style={{ color: colors.textMuted, fontSize: 11 }}>
-                    LAST PURCHASE
-                  </Text>
-                  <Text style={{ color: colors.text, fontSize: 13 }}>
-                    {lastSale ? formatDate(lastSale.createdAt) : "N/A"}
                   </Text>
                 </View>
                 <View style={styles.stat}>

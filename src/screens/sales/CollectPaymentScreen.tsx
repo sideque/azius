@@ -1,5 +1,12 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import {
   CustomButton,
@@ -118,63 +125,75 @@ export function CollectPaymentScreen() {
   };
 
   return (
-    <ScrollView
+    <KeyboardAvoidingView
       style={[styles.container, { backgroundColor: colors.background }]}
-      keyboardShouldPersistTaps="handled"
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 80 : 0}
     >
-      <Dropdown
-        label="Select Shop"
-        options={shopOptions}
-        value={shopId}
-        onChange={setShopId}
-        placeholder="Choose a shop..."
-      />
-      {selectedShop && (
-        <View
-          style={[styles.balanceCard, { backgroundColor: colors.warningLight }]}
-        >
-          <Text style={{ color: colors.textSecondary }}>
-            Outstanding Balance
-          </Text>
-          <Text
-            style={{ color: colors.warning, fontSize: 24, fontWeight: "700" }}
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+      >
+        <Dropdown
+          label="Select Shop"
+          options={shopOptions}
+          value={shopId}
+          onChange={setShopId}
+          placeholder="Choose a shop..."
+        />
+        {selectedShop && (
+          <View
+            style={[styles.balanceCard, { backgroundColor: colors.warningLight }]}
           >
-            {formatCurrency(outstandingBalance)}
-          </Text>
+            <Text style={{ color: colors.textSecondary }}>
+              Outstanding Balance
+            </Text>
+            <Text
+              style={{ color: colors.warning, fontSize: 24, fontWeight: "700" }}
+            >
+              {formatCurrency(outstandingBalance)}
+            </Text>
+          </View>
+        )}
+        <View style={styles.row}>
+          <View style={styles.col}>
+            <CustomInput
+              label="Payment Amount (₹)"
+              value={amount}
+              onChangeText={setAmount}
+              keyboardType="decimal-pad"
+              error={errors.amount}
+            />
+          </View>
+          <View style={styles.col}>
+            <Dropdown
+              label="Payment Method"
+              options={PAYMENT_METHODS}
+              value={method}
+              onChange={(v) => setMethod(v as PaymentMethod)}
+            />
+          </View>
         </View>
-      )}
-      <CustomInput
-        label="Payment Amount (₹)"
-        value={amount}
-        onChangeText={setAmount}
-        keyboardType="decimal-pad"
-        error={errors.amount}
-      />
-      <Dropdown
-        label="Payment Method"
-        options={PAYMENT_METHODS}
-        value={method}
-        onChange={(v) => setMethod(v as PaymentMethod)}
-      />
-      <DatePickerField
-        label="Payment Date"
-        value={paymentDate}
-        onChange={setPaymentDate}
-      />
-      <CustomInput
-        label="Notes"
-        value={notes}
-        onChangeText={setNotes}
-        multiline
-        numberOfLines={3}
-      />
-      <CustomButton
-        title="Save Payment"
-        onPress={handleSave}
-        loading={loading}
-      />
+        <DatePickerField
+          label="Payment Date"
+          value={paymentDate}
+          onChange={setPaymentDate}
+        />
+        <CustomInput
+          label="Notes"
+          value={notes}
+          onChangeText={setNotes}
+          multiline
+          numberOfLines={3}
+        />
+        <CustomButton
+          title="Save Payment"
+          onPress={handleSave}
+          loading={loading}
+        />
 
-      <Modal
+        <Modal
         visible={showReceipt}
         title="Payment Receipt"
         onClose={() => {
@@ -233,12 +252,16 @@ export function CollectPaymentScreen() {
           style={{ marginTop: 16 }}
         />
       </Modal>
-    </ScrollView>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16 },
+  container: { flex: 1 },
+  scrollContent: { padding: 16, paddingBottom: 40 },
+  row: { flexDirection: "row", gap: 12 },
+  col: { flex: 1 },
   balanceCard: {
     padding: 16,
     borderRadius: 14,

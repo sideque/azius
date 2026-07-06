@@ -1,5 +1,12 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { Alert, ScrollView, StyleSheet, Text } from "react-native";
+import {
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { RouteProp, useFocusEffect, useNavigation, useRoute } from "@react-navigation/native";
 import {
   CustomButton,
@@ -12,7 +19,6 @@ import { useAppDispatch } from "../../store/hooks";
 import {
   addProduct,
   editProduct,
-  removeProduct,
 } from "../../store/slices/productSlice";
 import { useTheme } from "../../theme/ThemeContext";
 import { validateProduct } from "../../utils/validation";
@@ -202,121 +208,110 @@ export function ProductFormScreen() {
     }
   };
 
-  // const handleDelete = async () => {
-  //   if (productId) {
-  //     await dispatch(removeProduct(productId));
-  //     showToast("Product deleted");
-  //     navigation.navigate("Products" as never);
-  //   }
-  // };
-  const handleDelete = async () => {
-    if (!productId) return;
-
-    Alert.alert(
-      "Delete Product",
-      "Are you sure you want to delete this product?",
-      [
-        {
-          text: "Cancel",
-          style: "cancel",
-        },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: async () => {
-            await dispatch(removeProduct(productId));
-            showToast("Product deleted");
-            navigation.navigate("Products" as never);
-          },
-        },
-      ],
-    );
-  };
-
   return (
-    <ScrollView
+    <KeyboardAvoidingView
       style={[styles.container, { backgroundColor: colors.background }]}
-      keyboardShouldPersistTaps="handled"
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 80 : 0}
     >
-      <CustomInput
-        label="Product Name"
-        value={form.productName}
-        onChangeText={(v) => update("productName", v)}
-        error={errors.productName}
-      />
-      <CustomInput
-        label="Product Code"
-        value={form.productCode}
-        onChangeText={(v) => update("productCode", v)}
-        error={errors.productCode}
-      />
-      <CustomInput
-        label="Purchase Price"
-        value={form.purchasePrice}
-        onChangeText={(v) => update("purchasePrice", v)}
-        keyboardType="decimal-pad"
-        error={errors.purchasePrice}
-      />
-      <CustomInput
-        label="Selling Price"
-        value={form.sellingPrice}
-        onChangeText={(v) => update("sellingPrice", v)}
-        keyboardType="decimal-pad"
-        error={errors.sellingPrice}
-      />
-      <CustomInput
-        label="Opening Quantity"
-        value={form.stockQuantity}
-        onChangeText={(v) => update("stockQuantity", v)}
-        keyboardType="decimal-pad"
-        error={errors.stockQuantity}
-      />
-      <CustomInput
-        label="Minimum Stock (for low stock alert)"
-        value={form.minStock}
-        onChangeText={(v) => update("minStock", v)}
-        keyboardType="decimal-pad"
-        error={errors.minStock}
-      />
-      <Dropdown
-        label="Unit"
-        options={unitOptions}
-        value={form.unit}
-        onChange={(value) => update("unit", value)}
-        placeholder="Select unit"
-      />
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+      >
+        <CustomInput
+          label="Product Name"
+          value={form.productName}
+          onChangeText={(v) => update("productName", v)}
+          error={errors.productName}
+        />
+        <View style={styles.row}>
+          <View style={styles.col}>
+            <CustomInput
+              label="Product Code"
+              value={form.productCode}
+              onChangeText={(v) => update("productCode", v)}
+              error={errors.productCode}
+            />
+          </View>
+          <View style={styles.col}>
+            <Dropdown
+              label="Unit"
+              options={unitOptions}
+              value={form.unit}
+              onChange={(value) => update("unit", value)}
+              placeholder="Select unit"
+            />
+          </View>
+        </View>
+        <View style={styles.row}>
+          <View style={styles.col}>
+            <CustomInput
+              label="Purchase Price"
+              value={form.purchasePrice}
+              onChangeText={(v) => update("purchasePrice", v)}
+              keyboardType="decimal-pad"
+              error={errors.purchasePrice}
+            />
+          </View>
+          <View style={styles.col}>
+            <CustomInput
+              label="Selling Price"
+              value={form.sellingPrice}
+              onChangeText={(v) => update("sellingPrice", v)}
+              keyboardType="decimal-pad"
+              error={errors.sellingPrice}
+            />
+          </View>
+        </View>
+        <View style={styles.row}>
+          <View style={styles.col}>
+            <CustomInput
+              label="Opening Quantity"
+              value={form.stockQuantity}
+              onChangeText={(v) => update("stockQuantity", v)}
+              keyboardType="decimal-pad"
+              error={errors.stockQuantity}
+            />
+          </View>
+          <View style={styles.col}>
+            <CustomInput
+              label="Minimum Stock"
+              value={form.minStock}
+              onChangeText={(v) => update("minStock", v)}
+              keyboardType="decimal-pad"
+              error={errors.minStock}
+            />
+          </View>
+        </View>
 
-      <CustomInput
-        label="Description"
-        value={form.description}
-        onChangeText={(v) => update("description", v)}
-        multiline
-        numberOfLines={3}
-      />
-      <CustomButton
-        title={isEdit ? "Update Product" : "Create Product"}
-        onPress={handleSave}
-        loading={loading}
-      />
-      {isEdit && (
+        <CustomInput
+          label="Description"
+          value={form.description}
+          onChangeText={(v) => update("description", v)}
+          multiline
+          numberOfLines={3}
+        />
         <CustomButton
-          title="Delete Product"
-          onPress={handleDelete}
-          variant="danger"
+          title={isEdit ? "Update Product" : "Create Product"}
+          onPress={handleSave}
+          loading={loading}
+        />
+        <CustomButton
+          title="Back to Products"
+          onPress={() => navigation.navigate("Products" as never)}
+          variant="secondary"
           style={{ marginTop: 12 }}
         />
-      )}
-      <CustomButton
-        title="Back to Products"
-        onPress={() => navigation.navigate("Products" as never)}
-        variant="secondary"
-        style={{ marginTop: 12 }}
-      />
-    </ScrollView>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16 },
+  container: { flex: 1 },
+  scrollContent: { padding: 16, paddingBottom: 40 },
+  row: { flexDirection: "row", gap: 12 },
+  col: { flex: 1 },
   errorText: { marginTop: -10, marginBottom: 16, fontSize: 12 },
 });

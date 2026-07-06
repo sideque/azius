@@ -1,5 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import {
   useFocusEffect,
   useNavigation,
@@ -14,6 +22,7 @@ import {
   DatePickerField,
   Dropdown,
   EmptyState,
+  Modal,
   useToast,
 } from "../../components";
 import {
@@ -49,6 +58,7 @@ export function SupplierBillingScreen() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [showAddItemModal, setShowAddItemModal] = useState(false);
 
   const route = useRoute<RouteProp<AdminDrawerParamList, "SupplierBilling">>();
   const billId = route.params?.billId;
@@ -162,7 +172,7 @@ export function SupplierBillingScreen() {
     try {
       const bill = await getSupplierBill(id);
       if (!bill) {
-        showToast("Supplier bill not found", "error");
+        showToast("Purchase bill not found", "error");
         return;
       }
 
@@ -192,7 +202,7 @@ export function SupplierBillingScreen() {
       setItems(normalizedItems);
       setOriginalItems(normalizedItems);
     } catch (error) {
-      showToast("Failed to load supplier bill", "error");
+      showToast("Failed to load purchase bill", "error");
     }
   };
 
@@ -236,10 +246,10 @@ export function SupplierBillingScreen() {
 
     if (Object.keys(nextErrors).length > 0) {
       setErrors(nextErrors);
-      return;
+      return false;
     }
 
-    if (!product) return;
+    if (!product) return false;
 
     setErrors({});
     setItems((current) => {
@@ -279,6 +289,25 @@ export function SupplierBillingScreen() {
     setQuantity("");
     setPurchasePrice("");
     setSellingPrice("");
+    return true;
+  };
+
+  const openAddItemModal = () => {
+    setSelectedProductId("");
+    setQuantity("");
+    setPurchasePrice("");
+    setSellingPrice("");
+    setErrors((prev) => {
+      const { product, quantity, purchasePrice, sellingPrice, ...rest } = prev;
+      return rest;
+    });
+    setShowAddItemModal(true);
+  };
+
+  const handleAddItemFromModal = () => {
+    if (addItem()) {
+      setShowAddItemModal(false);
+    }
   };
 
   const removeItem = (itemId: string) => {
@@ -360,8 +389,8 @@ export function SupplierBillingScreen() {
 
       showToast(
         billId
-          ? "Supplier bill updated and stock adjusted"
-          : "Supplier bill saved and stock updated",
+          ? "Purchase bill updated and stock adjusted"
+          : "Purchase bill saved and stock updated",
       );
       resetForm();
       if (billId) {
@@ -372,7 +401,7 @@ export function SupplierBillingScreen() {
       }
       loadData();
     } catch (error) {
-      showToast("Failed to save supplier bill", "error");
+      showToast("Failed to save purchase bill", "error");
       console.warn(error);
     } finally {
       setLoading(false);
@@ -380,13 +409,13 @@ export function SupplierBillingScreen() {
   };
 
   return (
-    // <ScrollView
-    //   style={[styles.container, { backgroundColor: colors.background }]}
-    //   contentContainerStyle={styles.scrollContent}
-    //   keyboardShouldPersistTaps="handled"
-    // >
-    <ScrollView
+    <KeyboardAvoidingView
       style={[styles.container, { backgroundColor: colors.background }]}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 80 : 0}
+    >
+    <ScrollView
+      style={styles.container}
       contentContainerStyle={styles.scrollContent}
       keyboardShouldPersistTaps="handled"
       refreshControl={
@@ -405,7 +434,7 @@ export function SupplierBillingScreen() {
         </Text>
         <Text style={[styles.screenSubtitle, { color: colors.textSecondary }]}>
           {isEditMode
-            ? "Modify details of the supplier bill and update inventory stock."
+            ? "Modify details of the purchase bill and update inventory stock."
             : "Record items received from supplier and update stock automatically."}
         </Text>
       </View>
@@ -465,109 +494,20 @@ export function SupplierBillingScreen() {
           </Text>
         ) : null}
 
-        {/* Date Row with period option */}
-        <View style={styles.row}>
-          <View style={styles.col}>
-            <DatePickerField
-              label="Bill Date"
-              value={billDate}
-              onChange={setBillDate}
-            />
-          </View>
-          <View style={{ width: 120 }}>
-            <Dropdown
-              label="Period"
-              options={[{ label: "Today", value: "today" }]}
-              value="today"
-              onChange={() => {}}
-            />
-          </View>
-        </View>
-      </View>
-
-      {/* Add Products Card */}
-      <View
-        style={[
-          styles.card,
-          { backgroundColor: colors.card, borderColor: colors.border },
-        ]}
-      >
-        <View style={styles.cardHeader}>
-          <Ionicons name="bag-add-outline" size={16} color={colors.text} />
-          <Text style={[styles.cardTitle, { color: colors.text }]}>
-            Quick Add Product
-          </Text>
-        </View>
-
-        <Dropdown
-          label="Select Product"
-          options={productOptions}
-          value={selectedProductId}
-          onChange={setSelectedProductId}
-        />
-        {errors.product ? (
-          <Text
-            style={[
-              styles.errorText,
-              { color: colors.error, marginBottom: 12 },
-            ]}
-          >
-            {errors.product}
-          </Text>
-        ) : null}
-
-        {selectedProduct && (
-          <View
-            style={[styles.stockBadge, { backgroundColor: colors.infoLight, flexDirection: "row", alignItems: "center", gap: 6 }]}
-          >
-            <Ionicons name="cube-outline" size={14} color={colors.info} />
-            <Text style={[styles.stockText, { color: colors.info }]}>
-              Stock Available: {selectedProduct.stockQuantity} units
-            </Text>
-          </View>
-        )}
-
-        {/* 3-Column Numeric Inputs Grid */}
-        <View style={styles.gridRow}>
-          <View style={styles.gridCol}>
-            <CustomInput
-              label="Qty"
-              placeholder="0"
-              value={quantity}
-              onChangeText={setQuantity}
-              keyboardType="decimal-pad"
-              error={errors.quantity}
-            />
-          </View>
-          <View style={styles.gridColLarge}>
-            <CustomInput
-              label="Buy (₹)"
-              placeholder="0.00"
-              value={purchasePrice}
-              onChangeText={setPurchasePrice}
-              keyboardType="decimal-pad"
-              error={errors.purchasePrice}
-            />
-          </View>
-          <View style={styles.gridColLarge}>
-            <CustomInput
-              label="Sell (₹)"
-              placeholder="0.00"
-              value={sellingPrice}
-              onChangeText={setSellingPrice}
-              keyboardType="decimal-pad"
-              error={errors.sellingPrice}
-            />
-          </View>
-        </View>
-
-        <CustomButton
-          title="Add Product to Bill"
-          onPress={addItem}
-          variant="secondary"
-          style={styles.addProductBtn}
+        <DatePickerField
+          label="Bill Date"
+          value={billDate}
+          onChange={setBillDate}
         />
       </View>
+
+      {/* Add Product Trigger */}
+      <CustomButton
+        title="+ Add Product to Bill"
+        onPress={openAddItemModal}
+        variant="secondary"
+        style={styles.addProductBtn}
+      />
 
       {/* Bill Items Receipt Card */}
       {items.length > 0 ? (
@@ -671,29 +611,6 @@ export function SupplierBillingScreen() {
         />
       )}
 
-      {/* Notes Section Card */}
-      <View
-        style={[
-          styles.card,
-          { backgroundColor: colors.card, borderColor: colors.border },
-        ]}
-      >
-        <View style={styles.cardHeader}>
-          <Ionicons name="create-outline" size={16} color={colors.text} />
-          <Text style={[styles.cardTitle, { color: colors.text }]}>
-            Memo / Reference Notes
-          </Text>
-        </View>
-        <CustomInput
-          placeholder="Enter payment terms, reference numbers or purchase conditions..."
-          value={notes}
-          onChangeText={setNotes}
-          multiline
-          numberOfLines={3}
-          style={styles.notesInput}
-        />
-      </View>
-
       {/* Main Save / Navigation Controls */}
       <View style={styles.actionSection}>
         {errors.items ? (
@@ -728,6 +645,80 @@ export function SupplierBillingScreen() {
         />
       </View>
     </ScrollView>
+
+    <Modal
+      visible={showAddItemModal}
+      title="Add Product to Bill"
+      onClose={() => setShowAddItemModal(false)}
+    >
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      >
+        <ScrollView keyboardShouldPersistTaps="handled">
+          <Dropdown
+            label="Select Product"
+            options={productOptions}
+            value={selectedProductId}
+            onChange={setSelectedProductId}
+          />
+          {errors.product ? (
+            <Text style={[styles.errorText, { color: colors.error, marginBottom: 12 }]}>
+              {errors.product}
+            </Text>
+          ) : null}
+
+          {selectedProduct && (
+            <View
+              style={[styles.stockBadge, { backgroundColor: colors.infoLight, flexDirection: "row", alignItems: "center", gap: 6 }]}
+            >
+              <Ionicons name="cube-outline" size={14} color={colors.info} />
+              <Text style={[styles.stockText, { color: colors.info }]}>
+                Stock Available: {selectedProduct.stockQuantity} {selectedProduct.unit || "units"}
+              </Text>
+            </View>
+          )}
+
+          <CustomInput
+            label={selectedProduct?.unit ? `Quantity (${selectedProduct.unit})` : "Quantity"}
+            placeholder="0"
+            value={quantity}
+            onChangeText={setQuantity}
+            keyboardType="decimal-pad"
+            error={errors.quantity}
+          />
+
+          <View style={styles.gridRow}>
+            <View style={styles.gridCol}>
+              <CustomInput
+                label="Buy Price (₹)"
+                placeholder="0.00"
+                value={purchasePrice}
+                onChangeText={setPurchasePrice}
+                keyboardType="decimal-pad"
+                error={errors.purchasePrice}
+              />
+            </View>
+            <View style={styles.gridCol}>
+              <CustomInput
+                label="Sell Price (₹)"
+                placeholder="0.00"
+                value={sellingPrice}
+                onChangeText={setSellingPrice}
+                keyboardType="decimal-pad"
+                error={errors.sellingPrice}
+              />
+            </View>
+          </View>
+
+          <CustomButton
+            title="Add to Bill"
+            onPress={handleAddItemFromModal}
+            style={{ marginTop: 8 }}
+          />
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </Modal>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -776,13 +767,6 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
     letterSpacing: 0.5,
   },
-  row: {
-    flexDirection: "row",
-    gap: 12,
-  },
-  col: {
-    flex: 1,
-  },
   disabledContainer: {
     borderWidth: 1,
     borderRadius: 12,
@@ -820,9 +804,6 @@ const styles = StyleSheet.create({
   },
   gridCol: {
     flex: 1,
-  },
-  gridColLarge: {
-    flex: 1.25,
   },
   addProductBtn: {
     marginTop: 4,
@@ -913,10 +894,6 @@ const styles = StyleSheet.create({
   receiptTotalValue: {
     fontSize: 20,
     fontWeight: "800",
-  },
-  notesInput: {
-    minHeight: 80,
-    textAlignVertical: "top",
   },
   actionSection: {
     marginTop: 8,

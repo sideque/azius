@@ -1504,6 +1504,15 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     (sum, payment) => sum + payment.amount,
     0,
   );
+  const paymentsCollectedCash = payments
+    .filter((payment) => payment.paymentMethod === "Cash")
+    .reduce((sum, payment) => sum + payment.amount, 0);
+  const paymentsCollectedUPI = payments
+    .filter((payment) => payment.paymentMethod === "UPI")
+    .reduce((sum, payment) => sum + payment.amount, 0);
+  const paymentsCollectedBankTransfer = payments
+    .filter((payment) => payment.paymentMethod === "Bank Transfer")
+    .reduce((sum, payment) => sum + payment.amount, 0);
 
   return {
     totalShops: shops.length,
@@ -1516,6 +1525,9 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     profitYear: profitYear - expensesYear,
     outstandingBalance,
     paymentsCollected,
+    paymentsCollectedCash,
+    paymentsCollectedUPI,
+    paymentsCollectedBankTransfer,
     expensesToday,
     expensesMonth,
     expensesYear,

@@ -1,3 +1,5 @@
+import { Expense } from "../types";
+
 export type AuthStackParamList = {
   Splash: undefined;
   Login: undefined;
@@ -19,6 +21,7 @@ export type AdminDrawerParamList = {
   SupplierBilling: { billId?: string } | undefined;
   Reports: undefined;
   Expenses: undefined;
+  ExpenseForm: { expense?: Expense } | undefined;
   Notifications: undefined;
   Settings: undefined;
   EditPayment: { paymentId: string; receiptNumber: string };

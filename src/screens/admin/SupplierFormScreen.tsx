@@ -1,5 +1,11 @@
 import React, { useEffect, useState } from "react";
-import { ScrollView, StyleSheet } from "react-native";
+import {
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  View,
+} from "react-native";
 import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
 import { CustomButton, CustomInput, useToast } from "../../components";
 import {
@@ -12,7 +18,6 @@ import { useAppDispatch } from "../../store/hooks";
 import {
   addSupplier,
   editSupplier,
-  removeSupplier,
 } from "../../store/slices/supplierSlice";
 import { useTheme } from "../../theme/ThemeContext";
 import { validateSupplier } from "../../utils/validation";
@@ -115,77 +120,79 @@ export function SupplierFormScreen() {
     }
   };
 
-  const handleDelete = async () => {
-    if (supplierId) {
-      await dispatch(removeSupplier(supplierId));
-      showToast("Supplier deleted");
-      navigation.navigate("Suppliers" as never);
-    }
-  };
-
   return (
-    <ScrollView
+    <KeyboardAvoidingView
       style={[styles.container, { backgroundColor: colors.background }]}
-      keyboardShouldPersistTaps="handled"
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 80 : 0}
     >
-      <CustomInput
-        label="Supplier Name"
-        value={form.supplierName}
-        onChangeText={(v) => update("supplierName", v)}
-        error={errors.supplierName}
-      />
-      <CustomInput
-        label="Contact Name"
-        value={form.contactName}
-        onChangeText={(v) => update("contactName", v)}
-      />
-      <CustomInput
-        label="Phone Number"
-        value={form.phoneNumber}
-        onChangeText={(v) => update("phoneNumber", v)}
-        keyboardType="phone-pad"
-        error={errors.phoneNumber}
-      />
-      <CustomInput
-        label="Address"
-        value={form.address}
-        onChangeText={(v) => update("address", v)}
-      />
-      <CustomInput
-        label="Opening Balance"
-        value={form.openingBalance}
-        onChangeText={(v) => update("openingBalance", v)}
-        keyboardType="decimal-pad"
-        error={errors.openingBalance}
-      />
-      <CustomInput
-        label="Notes"
-        value={form.notes}
-        onChangeText={(v) => update("notes", v)}
-        multiline
-        numberOfLines={3}
-      />
-      <CustomButton
-        title={isEdit ? "Update Supplier" : "Create Supplier"}
-        onPress={handleSave}
-        loading={loading}
-      />
-      {isEdit && (
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+      >
+        <CustomInput
+          label="Supplier Name"
+          value={form.supplierName}
+          onChangeText={(v) => update("supplierName", v)}
+          error={errors.supplierName}
+        />
+        <View style={styles.row}>
+          <View style={styles.col}>
+            <CustomInput
+              label="Contact Name"
+              value={form.contactName}
+              onChangeText={(v) => update("contactName", v)}
+            />
+          </View>
+          <View style={styles.col}>
+            <CustomInput
+              label="Phone Number"
+              value={form.phoneNumber}
+              onChangeText={(v) => update("phoneNumber", v)}
+              keyboardType="phone-pad"
+              error={errors.phoneNumber}
+            />
+          </View>
+        </View>
+        <CustomInput
+          label="Address"
+          value={form.address}
+          onChangeText={(v) => update("address", v)}
+        />
+        <CustomInput
+          label="Opening Balance"
+          value={form.openingBalance}
+          onChangeText={(v) => update("openingBalance", v)}
+          keyboardType="decimal-pad"
+          error={errors.openingBalance}
+        />
+        <CustomInput
+          label="Notes"
+          value={form.notes}
+          onChangeText={(v) => update("notes", v)}
+          multiline
+          numberOfLines={3}
+        />
         <CustomButton
-          title="Delete Supplier"
-          onPress={handleDelete}
-          variant="danger"
+          title={isEdit ? "Update Supplier" : "Create Supplier"}
+          onPress={handleSave}
+          loading={loading}
+        />
+        <CustomButton
+          title="Back to Suppliers"
+          onPress={() => navigation.navigate("Suppliers" as never)}
+          variant="secondary"
           style={{ marginTop: 12 }}
         />
-      )}
-      <CustomButton
-        title="Back to Suppliers"
-        onPress={() => navigation.navigate("Suppliers" as never)}
-        variant="secondary"
-        style={{ marginTop: 12 }}
-      />
-    </ScrollView>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
-const styles = StyleSheet.create({ container: { flex: 1, padding: 16 } });
+const styles = StyleSheet.create({
+  container: { flex: 1 },
+  scrollContent: { padding: 16, paddingBottom: 40 },
+  row: { flexDirection: "row", gap: 12 },
+  col: { flex: 1 },
+});

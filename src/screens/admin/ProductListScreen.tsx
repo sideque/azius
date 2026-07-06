@@ -66,6 +66,7 @@ export function ProductListScreen() {
             <ProductCard
               product={item}
               onPress={() => navigation.navigate('ProductForm', { productId: item.id })}
+              onDelete={() => setDeleteId(item.id)}
             />
           )}
         />

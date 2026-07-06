@@ -9,10 +9,11 @@ interface Props {
   product: Product;
   onPress?: () => void;
   onAdd?: () => void;
+  onDelete?: () => void;
   showStock?: boolean;
 }
 
-export function ProductCard({ product, onPress, onAdd, showStock = true }: Props) {
+export function ProductCard({ product, onPress, onAdd, onDelete, showStock = true }: Props) {
   const { colors } = useTheme();
   const lowStock = product.stockQuantity <= (product.minStock ?? 20);
 
@@ -45,14 +46,28 @@ export function ProductCard({ product, onPress, onAdd, showStock = true }: Props
       <View style={[styles.divider, { backgroundColor: colors.border }]} />
       <View style={styles.footer}>
         <Text style={[styles.price, { color: colors.primary }]}>{formatCurrency(product.sellingPrice)}/{product.unit}</Text>
-        {showStock && (
-          <View style={[styles.stockBadge, { backgroundColor: lowStock ? colors.errorLight : colors.successLight, flexDirection: 'row', alignItems: 'center', gap: 4 }]}>
-            {lowStock && <Ionicons name="warning-outline" size={12} color={colors.error} />}
-            <Text style={[styles.stockText, { color: lowStock ? colors.error : colors.success }]}>
-              Stock: {product.stockQuantity}
-            </Text>
-          </View>
-        )}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          {showStock && (
+            <View style={[styles.stockBadge, { backgroundColor: lowStock ? colors.errorLight : colors.successLight, flexDirection: 'row', alignItems: 'center', gap: 4 }]}>
+              {lowStock && <Ionicons name="warning-outline" size={12} color={colors.error} />}
+              <Text style={[styles.stockText, { color: lowStock ? colors.error : colors.success }]}>
+                Stock: {product.stockQuantity}
+              </Text>
+            </View>
+          )}
+          {onDelete && (
+            <Pressable
+              onPress={onDelete}
+              style={({ pressed }) => [
+                styles.deleteBtn,
+                { backgroundColor: colors.errorLight },
+                pressed && { opacity: 0.7 },
+              ]}
+            >
+              <Ionicons name="trash-outline" size={16} color={colors.error} />
+            </Pressable>
+          )}
+        </View>
       </View>
     </Pressable>
   );
@@ -82,4 +97,5 @@ const styles = StyleSheet.create({
   price: { fontSize: 16, fontWeight: '800' },
   stockBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
   stockText: { fontSize: 12, fontWeight: '600' },
+  deleteBtn: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
 });

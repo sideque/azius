@@ -68,6 +68,8 @@ export function CreateSaleScreen() {
   const [showPriceModal, setShowPriceModal] = useState(false);
   const [pendingPriceItem, setPendingPriceItem] = useState<CartItem | null>(null);
   const [priceInput, setPriceInput] = useState("");
+  const [includeOwnerName, setIncludeOwnerName] = useState(false);
+  const [pendingOwnerName, setPendingOwnerName] = useState("");
 
   const load = useCallback(() => {
     dispatch(fetchProducts());
@@ -195,7 +197,10 @@ export function CreateSaleScreen() {
 
   const handleShareInvoice = async (sale: SaleWithDetails) => {
     try {
-      const shared = await shareInvoicePdf(sale);
+      const shared = await shareInvoicePdf(sale, {
+        includeOwnerName,
+        ownerName: pendingOwnerName,
+      });
       if (!shared) {
         showToast("Sharing is not available on this device", "error");
       }
@@ -209,7 +214,10 @@ export function CreateSaleScreen() {
 
   const handlePrintInvoice = async (sale: SaleWithDetails) => {
     try {
-      await printInvoice(sale);
+      await printInvoice(sale, {
+        includeOwnerName,
+        ownerName: pendingOwnerName,
+      });
       return true;
     } catch (error) {
       console.error("Failed to print invoice:", error);
@@ -227,6 +235,7 @@ export function CreateSaleScreen() {
     if (createSale.fulfilled.match(result)) {
       const salePayload = result.payload as SaleWithDetails;
       setPendingInvoice(salePayload);
+      setPendingOwnerName(selectedShop?.ownerName ?? "");
       setShowShareModal(true);
       setShowCart(false);
       dispatch(fetchProducts());
@@ -242,6 +251,8 @@ export function CreateSaleScreen() {
     if (shouldShare && pendingInvoice) {
       await handleShareInvoice(pendingInvoice);
     }
+    dispatch(clearCart());
+    if (user?.id) dispatch(clearCartInFirebase());
     setShowShareModal(false);
     setShowInvoice(true);
   };
@@ -531,10 +542,27 @@ export function CreateSaleScreen() {
             placeholder={selectedShop?.phoneNumber ?? "Enter phone number"}
           />
         )}
+        <Pressable
+          onPress={() => setIncludeOwnerName((v) => !v)}
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            marginTop: 12,
+          }}
+        >
+          <Ionicons
+            name={includeOwnerName ? "checkbox" : "square-outline"}
+            size={20}
+            color={colors.primary}
+          />
+          <Text style={{ color: colors.text, fontSize: 13, marginLeft: 8 }}>
+            Include owner name in bill
+          </Text>
+        </Pressable>
         <CustomButton
           title="Continue"
           onPress={() => handleShareDecision(shareViaWhatsApp)}
-          style={{ marginTop: 8 }}
+          style={{ marginTop: 12 }}
         />
       </Modal>
 
@@ -547,6 +575,8 @@ export function CreateSaleScreen() {
           if (user?.id) dispatch(clearCartInFirebase());
           setPendingInvoice(null);
           setShareViaWhatsApp(false);
+          setIncludeOwnerName(false);
+          setPendingOwnerName("");
           setSharePhoneNumber(selectedShop?.phoneNumber ?? "");
         }}
       >
@@ -575,6 +605,8 @@ export function CreateSaleScreen() {
             if (user?.id) dispatch(clearCartInFirebase());
             setPendingInvoice(null);
             setShareViaWhatsApp(false);
+            setIncludeOwnerName(false);
+            setPendingOwnerName("");
             setSharePhoneNumber(selectedShop?.phoneNumber ?? "");
           }}
           style={{ marginTop: 16 }}

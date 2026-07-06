@@ -4,7 +4,15 @@ import * as FileSystem from "expo-file-system/legacy";
 import { SaleWithDetails } from "../types";
 import { formatCurrency, formatDateTime } from "./formatters";
 
-export function generateInvoiceHtml(sale: SaleWithDetails): string {
+export interface InvoiceOptions {
+  includeOwnerName?: boolean;
+  ownerName?: string;
+}
+
+export function generateInvoiceHtml(
+  sale: SaleWithDetails,
+  options?: InvoiceOptions,
+): string {
   const itemsHtml = sale.items
     .map(
       (item) => `
@@ -18,6 +26,8 @@ export function generateInvoiceHtml(sale: SaleWithDetails): string {
     `
     )
     .join("");
+
+  const showOwnerInfo = Boolean(options?.includeOwnerName && options?.ownerName);
 
   return `
 <!DOCTYPE html>
@@ -163,8 +173,8 @@ export function generateInvoiceHtml(sale: SaleWithDetails): string {
 <body>
   <div class="receipt-container">
     <div class="header">
-      <div class="shop-name">SAIF MARKETING</div>
-      <div class="title">Sales Invoice</div>
+      ${showOwnerInfo ? `<div class="shop-name">SAIF MARKETING</div>` : ""}
+      <div class="title">${showOwnerInfo ? "Sales Invoice" : "Estimate Bill"}</div>
     </div>
 
     <table class="meta-table">
@@ -176,6 +186,16 @@ export function generateInvoiceHtml(sale: SaleWithDetails): string {
         <td class="meta-label">Customer:</td>
         <td class="meta-value">${sale.shopName}</td>
       </tr>
+      ${
+        showOwnerInfo
+          ? `
+      <tr>
+        <td class="meta-label">Owner:</td>
+        <td class="meta-value">${options!.ownerName}</td>
+      </tr>
+      `
+          : ""
+      }
       <tr>
         <td class="meta-label">Date:</td>
         <td class="meta-value">${formatDateTime(sale.createdAt)}</td>
@@ -223,7 +243,7 @@ export function generateInvoiceHtml(sale: SaleWithDetails): string {
 
     <div class="footer">
       <div class="thankyou">Thank you for shopping with us!</div>
-      <div>Powered by SAIF MARKETING</div>
+      ${showOwnerInfo ? `<div>Powered by SAIF MARKETING</div>` : ""}
     </div>
   </div>
 </body>
@@ -232,8 +252,11 @@ export function generateInvoiceHtml(sale: SaleWithDetails): string {
 }
 
 /** Generates the invoice PDF and opens the native share sheet. Returns false if sharing isn't available. */
-export async function shareInvoicePdf(sale: SaleWithDetails): Promise<boolean> {
-  const html = generateInvoiceHtml(sale);
+export async function shareInvoicePdf(
+  sale: SaleWithDetails,
+  options?: InvoiceOptions,
+): Promise<boolean> {
+  const html = generateInvoiceHtml(sale, options);
   const { base64 } = await Print.printToFileAsync({
     html,
     width: 300,
@@ -266,7 +289,10 @@ export async function shareInvoicePdf(sale: SaleWithDetails): Promise<boolean> {
   return true;
 }
 
-export async function printInvoice(sale: SaleWithDetails): Promise<void> {
-  const html = generateInvoiceHtml(sale);
+export async function printInvoice(
+  sale: SaleWithDetails,
+  options?: InvoiceOptions,
+): Promise<void> {
+  const html = generateInvoiceHtml(sale, options);
   await Print.printAsync({ html });
 }

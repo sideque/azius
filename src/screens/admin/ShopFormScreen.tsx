@@ -1,5 +1,11 @@
 import React, { useEffect, useState } from "react";
-import { ScrollView, StyleSheet } from "react-native";
+import {
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  View,
+} from "react-native";
 import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
 import { CustomButton, CustomInput, useToast } from "../../components";
 import { getShopById, getShops } from "../../services/database";
@@ -22,27 +28,39 @@ export function ShopFormScreen() {
     ownerName: "",
     phoneNumber: "",
     address: "",
-    creditLimit: "",
     openingBalance: "",
     notes: "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
+  const [creditLimit, setCreditLimit] = useState(0);
 
   useEffect(() => {
     if (shopId) {
       getShopById(shopId).then((s) => {
-        if (s)
+        if (s) {
           setForm({
             shopName: s.shopName,
             ownerName: s.ownerName,
             phoneNumber: s.phoneNumber,
             address: s.address,
-            creditLimit: String(s.creditLimit),
             openingBalance: String(s.outstandingBalance ?? ""),
             notes: s.notes,
           });
+          setCreditLimit(s.creditLimit);
+        }
       });
+    } else {
+      setForm({
+        shopName: "",
+        ownerName: "",
+        phoneNumber: "",
+        address: "",
+        openingBalance: "",
+        notes: "",
+      });
+      setCreditLimit(0);
+      setErrors({});
     }
   }, [shopId]);
 
@@ -101,7 +119,7 @@ export function ShopFormScreen() {
         ownerName: form.ownerName.trim(),
         phoneNumber: form.phoneNumber.trim(),
         address: form.address.trim(),
-        creditLimit: parseFloat(form.creditLimit),
+        creditLimit,
         outstandingBalance: startingBalance,
         openingBalance: startingBalance,
         notes: form.notes.trim(),
@@ -121,10 +139,10 @@ export function ShopFormScreen() {
         ownerName: "",
         phoneNumber: "",
         address: "",
-        creditLimit: "",
         openingBalance: "",
         notes: "",
       });
+      setCreditLimit(0);
     } catch (error) {
       showToast("Failed to save shop", "error");
       console.warn(error);
@@ -141,87 +159,98 @@ export function ShopFormScreen() {
   };
 
   return (
-    <ScrollView
+    <KeyboardAvoidingView
       style={[styles.container, { backgroundColor: colors.background }]}
-      keyboardShouldPersistTaps="handled"
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 80 : 0}
     >
-      <CustomInput
-        label="Shop Name"
-        value={form.shopName}
-        onChangeText={(v) => update("shopName", v)}
-        error={errors.shopName}
-      />
-      <CustomInput
-        label="Owner Name"
-        value={form.ownerName}
-        onChangeText={(v) => update("ownerName", v)}
-        error={errors.ownerName}
-      />
-      <CustomInput
-        label="Phone Number"
-        value={form.phoneNumber}
-        onChangeText={(v) => update("phoneNumber", v)}
-        keyboardType="phone-pad"
-        error={errors.phoneNumber}
-      />
-      <CustomInput
-        label="Address"
-        value={form.address}
-        onChangeText={(v) => update("address", v)}
-        error={errors.address}
-      />
-      <CustomInput
-        label="Credit Limit"
-        value={form.creditLimit}
-        onChangeText={(v) => update("creditLimit", v)}
-        keyboardType="decimal-pad"
-        error={errors.creditLimit}
-      />
-      <CustomInput
-        label="Opening Balance"
-        value={form.openingBalance}
-        onChangeText={(v) => update("openingBalance", v)}
-        keyboardType="decimal-pad"
-      />
-      <CustomInput
-        label="Notes"
-        value={form.notes}
-        onChangeText={(v) => update("notes", v)}
-        multiline
-        numberOfLines={3}
-      />
-      <CustomButton
-        title={isEdit ? "Update Shop" : "Create Shop"}
-        onPress={handleSave}
-        loading={loading}
-      />
-      {isEdit && (
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+      >
+        <CustomInput
+          label="Shop Name"
+          value={form.shopName}
+          onChangeText={(v) => update("shopName", v)}
+          error={errors.shopName}
+        />
+        <View style={styles.row}>
+          <View style={styles.col}>
+            <CustomInput
+              label="Owner Name"
+              value={form.ownerName}
+              onChangeText={(v) => update("ownerName", v)}
+              error={errors.ownerName}
+            />
+          </View>
+          <View style={styles.col}>
+            <CustomInput
+              label="Phone Number"
+              value={form.phoneNumber}
+              onChangeText={(v) => update("phoneNumber", v)}
+              keyboardType="phone-pad"
+              error={errors.phoneNumber}
+            />
+          </View>
+        </View>
+        <CustomInput
+          label="Address"
+          value={form.address}
+          onChangeText={(v) => update("address", v)}
+          error={errors.address}
+        />
+        <CustomInput
+          label="Opening Balance"
+          value={form.openingBalance}
+          onChangeText={(v) => update("openingBalance", v)}
+          keyboardType="decimal-pad"
+        />
+        <CustomInput
+          label="Notes"
+          value={form.notes}
+          onChangeText={(v) => update("notes", v)}
+          multiline
+          numberOfLines={3}
+        />
         <CustomButton
-          title="Delete Shop"
-          onPress={handleDelete}
-          variant="danger"
+          title={isEdit ? "Update Shop" : "Create Shop"}
+          onPress={handleSave}
+          loading={loading}
+        />
+        {isEdit && (
+          <CustomButton
+            title="Delete Shop"
+            onPress={handleDelete}
+            variant="danger"
+            style={{ marginTop: 12 }}
+          />
+        )}
+        <CustomButton
+          title="Back to Shops"
+          onPress={() => {
+            navigation.navigate("Shops" as never);
+            setForm({
+              shopName: "",
+              ownerName: "",
+              phoneNumber: "",
+              address: "",
+              openingBalance: "",
+              notes: "",
+            });
+            setCreditLimit(0);
+          }}
+          variant="secondary"
           style={{ marginTop: 12 }}
         />
-      )}
-      <CustomButton
-        title="Back to Shops"
-        onPress={() => {
-          navigation.navigate("Shops" as never);
-          setForm({
-            shopName: "",
-            ownerName: "",
-            phoneNumber: "",
-            address: "",
-            creditLimit: "",
-            openingBalance: "",
-            notes: "",
-          });
-        }}
-        variant="secondary"
-        style={{ marginTop: 12 }}
-      />
-    </ScrollView>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
-const styles = StyleSheet.create({ container: { flex: 1, padding: 16 } });
+const styles = StyleSheet.create({
+  container: { flex: 1 },
+  scrollContent: { padding: 16, paddingBottom: 40 },
+  row: { flexDirection: "row", gap: 12 },
+  col: { flex: 1 },
+});

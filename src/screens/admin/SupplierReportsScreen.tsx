@@ -587,7 +587,7 @@ export function SupplierReportsScreen() {
 
   const confirmDeleteBill = (billId: string) => {
     Alert.alert(
-      "Delete Supplier Bill",
+      "Delete Purchase Bill",
       "Are you sure you want to delete this bill? This will update the supplier outstanding balance.",
       [
         { text: "Cancel", style: "cancel" },
@@ -598,10 +598,10 @@ export function SupplierReportsScreen() {
             setLoading(true);
             try {
               await deleteSupplierBill(billId);
-              showToast("Supplier bill deleted");
+              showToast("Purchase bill deleted");
               await loadReport();
             } catch (error) {
-              showToast("Failed to delete supplier bill", "error");
+              showToast("Failed to delete purchase bill", "error");
             } finally {
               setLoading(false);
             }

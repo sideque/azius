@@ -1,52 +1,19 @@
 import React, { useCallback } from "react";
-import {
-  Dimensions,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
-import { LineChart } from "react-native-chart-kit";
+import { RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
-import {
-  DashboardCard,
-  EmptyState,
-  LoadingSkeleton,
-  PaymentCard,
-} from "../../components";
+import { DashboardCard, LoadingSkeleton } from "../../components";
 import { useAppDispatch, useAppSelector } from "../../store/hooks";
 import { fetchDashboard } from "../../store/slices/reportSlice";
-import { fetchRecentPayments } from "../../store/slices/paymentSlice";
-import { fetchRecentSales } from "../../store/slices/salesSlice";
 import { useTheme } from "../../theme/ThemeContext";
 import { formatCurrency } from "../../utils/formatters";
-
-const screenWidth = Dimensions.get("window").width - 32;
 
 export function DashboardScreen() {
   const { colors } = useTheme();
   const dispatch = useAppDispatch();
-  const { dashboardStats, topProducts, chartData, loading } = useAppSelector(
-    (s) => s.reports,
-  );
-  const recentSales = useAppSelector((s) => s.sales.recentSales);
-  const recentPayments = useAppSelector((s) => s.payments.recentPayments);
+  const { dashboardStats, loading } = useAppSelector((s) => s.reports);
 
-  // const load = useCallback(() => {
-  //   console.log("🚀 DASHBOARD LOADING START");
-  //   dispatch(fetchDashboard());
-  //   dispatch(fetchRecentSales());
-  //   dispatch(fetchRecentPayments());
-  // }, [dispatch]);
   const load = useCallback(() => {
-    console.log("🚀 DASHBOARD LOADING START");
-    Promise.all([
-      dispatch(fetchDashboard()),
-      dispatch(fetchRecentSales()),
-      dispatch(fetchRecentPayments()),
-    ]);
-    console.log("Dashboard ending ");
+    dispatch(fetchDashboard());
   }, [dispatch]);
 
   useFocusEffect(
@@ -59,15 +26,12 @@ export function DashboardScreen() {
 
   const stats = dashboardStats;
 
-  const chartLabels: string[] = (chartData ?? []).map(
-    (d: { month: string }) => d.month,
-  );
-  const salesData: number[] = (chartData ?? []).map(
-    (d: { sales: number }) => d.sales,
-  );
-  const profitData: number[] = (chartData ?? []).map(
-    (d: { profit: number }) => d.profit,
-  );
+  const cashCollected = stats?.paymentsCollectedCash ?? 0;
+  const upiCollected = stats?.paymentsCollectedUPI ?? 0;
+  const bankCollected = stats?.paymentsCollectedBankTransfer ?? 0;
+  const totalCollected = stats?.paymentsCollected ?? 0;
+  const pct = (value: number) =>
+    totalCollected > 0 ? `${Math.round((value / totalCollected) * 100)}% of total` : "No payments yet";
 
   return (
     <ScrollView
@@ -83,196 +47,87 @@ export function DashboardScreen() {
       <Text style={[styles.section, { color: colors.text }]}>Overview</Text>
       <View style={styles.grid}>
         <DashboardCard
-          title="Total Shops"
-          value={stats?.totalShops ?? 0}
-          icon="storefront-outline"
-        />
-        <DashboardCard
-          title="Total Products"
-          value={stats?.totalProducts ?? 0}
-          icon="cube-outline"
-        />
-        <DashboardCard
           title="Sales Today"
           value={formatCurrency(stats?.salesToday ?? 0)}
           color={colors.primary}
+          icon="trending-up-outline"
         />
         <DashboardCard
           title="Sales This Month"
           value={formatCurrency(stats?.salesMonth ?? 0)}
-        />
-        <DashboardCard
-          title="Sales This Year"
-          value={formatCurrency(stats?.salesYear ?? 0)}
+          icon="calendar-outline"
         />
         <DashboardCard
           title="Net Profit Today"
           value={formatCurrency(stats?.profitToday ?? 0)}
           color={colors.success}
+          icon="trophy-outline"
         />
         <DashboardCard
           title="Net Profit Month"
           value={formatCurrency(stats?.profitMonth ?? 0)}
           color={colors.success}
+          icon="trophy-outline"
         />
         <DashboardCard
           title="Net Profit Year"
           value={formatCurrency(stats?.profitYear ?? 0)}
           color={colors.success}
-        />
-        <DashboardCard
-          title="Outstanding"
-          value={formatCurrency(stats?.outstandingBalance ?? 0)}
-          color={colors.warning}
+          icon="trophy-outline"
         />
         <DashboardCard
           title="Payments Collected"
-          value={formatCurrency(stats?.paymentsCollected ?? 0)}
+          value={formatCurrency(totalCollected)}
           color={colors.secondary}
+          icon="wallet-outline"
         />
         <DashboardCard
           title="Expenses Today"
           value={formatCurrency(stats?.expensesToday ?? 0)}
           color={colors.error}
+          icon="arrow-down-circle-outline"
         />
         <DashboardCard
           title="Expenses This Month"
           value={formatCurrency(stats?.expensesMonth ?? 0)}
           color={colors.error}
+          icon="arrow-down-circle-outline"
         />
         <DashboardCard
           title="Expenses This Year"
           value={formatCurrency(stats?.expensesYear ?? 0)}
           color={colors.error}
+          icon="arrow-down-circle-outline"
         />
       </View>
 
       <Text style={[styles.section, { color: colors.text }]}>
-        Monthly Sales
+        Payments Collected
       </Text>
-      {/* <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-        <LineChart
-          data={{
-            labels: chartLabels,
-            datasets: [{ data: salesData.length ? salesData : [0] }],
-          }}
-          width={Math.max(screenWidth, chartLabels.length * 60)}
-          height={200}
-          chartConfig={{
-            backgroundColor: colors.card,
-            backgroundGradientFrom: colors.card,
-            backgroundGradientTo: colors.card,
-            decimalPlaces: 0,
-            color: () => colors.primary,
-            labelColor: () => colors.textSecondary,
-          }}
-          bezier
-          style={styles.chart}
+      <View style={styles.grid}>
+        <DashboardCard
+          title="Cash"
+          value={formatCurrency(cashCollected)}
+          subtitle={pct(cashCollected)}
+          color={colors.success}
+          icon="cash-outline"
         />
-      </ScrollView> */}
-
-      <Text style={[styles.section, { color: colors.text }]}>
-        Monthly Profit
-      </Text>
-      {/* <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-        <LineChart
-          data={{
-            labels: chartLabels,
-            datasets: [{ data: profitData.length ? profitData : [0] }],
-          }}
-          width={Math.max(screenWidth, chartLabels.length * 60)}
-          height={200}
-          chartConfig={{
-            backgroundColor: colors.card,
-            backgroundGradientFrom: colors.card,
-            backgroundGradientTo: colors.card,
-            decimalPlaces: 0,
-            color: () => colors.success,
-            labelColor: () => colors.textSecondary,
-          }}
-          bezier
-          style={styles.chart}
+        <DashboardCard
+          title="Google Pay / UPI"
+          value={formatCurrency(upiCollected)}
+          subtitle={pct(upiCollected)}
+          color={colors.secondary}
+          icon="phone-portrait-outline"
         />
-      </ScrollView> */}
-
-      <Text style={[styles.section, { color: colors.text }]}>
-        Top Selling Products
-      </Text>
-      {topProducts.length === 0 ? (
-        <EmptyState
-          title="No sales yet"
-          message="Top products will appear here"
-          icon="bar-chart-outline"
+        <DashboardCard
+          title="Bank Transfer"
+          value={formatCurrency(bankCollected)}
+          subtitle={pct(bankCollected)}
+          color={colors.info}
+          icon="business-outline"
         />
-      ) : (
-        topProducts.map(
-          (
-            p: {
-              productName: string;
-              totalQuantity: number;
-              totalRevenue: number;
-            },
-            i: number,
-          ) => (
-            <View
-              key={i}
-              style={[
-                styles.listItem,
-                { backgroundColor: colors.card, borderColor: colors.border },
-              ]}
-            >
-              <Text style={[styles.rank, { color: colors.primary }]}>
-                #{i + 1}
-              </Text>
-              <View style={{ flex: 1 }}>
-                <Text style={{ color: colors.text, fontWeight: "600" }}>
-                  {p.productName}
-                </Text>
-                <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
-                  Qty: {p.totalQuantity}
-                </Text>
-              </View>
-              <Text style={{ color: colors.success, fontWeight: "700" }}>
-                {formatCurrency(p.totalRevenue)}
-              </Text>
-            </View>
-          ),
-        )
-      )}
+      </View>
 
-      <Text style={[styles.section, { color: colors.text }]}>Recent Sales</Text>
-      {recentSales.length === 0 ? (
-        <EmptyState title="No recent sales" icon="receipt-outline" />
-      ) : (
-        recentSales.map((sale) => (
-          <View
-            key={sale.id}
-            style={[
-              styles.listItem,
-              { backgroundColor: colors.card, borderColor: colors.border },
-            ]}
-          >
-            <View style={{ flex: 1 }}>
-              <Text style={{ color: colors.text, fontWeight: "600" }}>
-                {sale.invoiceNumber}
-              </Text>
-              <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
-                {sale.shopName}
-              </Text>
-            </View>
-            <Text style={{ color: colors.primary, fontWeight: "700" }}>
-              {formatCurrency(sale.grandTotal)}
-            </Text>
-          </View>
-        ))
-      )}
-
-      <Text style={[styles.section, { color: colors.text }]}>
-        Recent Payments
-      </Text>
-      {recentPayments.map((p: (typeof recentPayments)[number]) => (
-        <PaymentCard key={p.id} payment={p} />
-      ))}
       <View style={{ height: 24 }} />
     </ScrollView>
   );
@@ -289,27 +144,4 @@ const styles = StyleSheet.create({
     letterSpacing: 0.8,
   },
   grid: { flexDirection: "row", flexWrap: "wrap", marginHorizontal: -4, marginBottom: 12 },
-  chart: {
-    borderRadius: 16,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 2,
-  },
-  listItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 16,
-    borderRadius: 14,
-    marginBottom: 8,
-    borderWidth: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.03,
-    shadowRadius: 3,
-    elevation: 1,
-  },
-  rank: { fontSize: 16, fontWeight: "900", marginRight: 12, width: 30 },
 });

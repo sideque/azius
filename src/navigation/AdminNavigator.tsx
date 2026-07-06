@@ -20,6 +20,7 @@ import { CustomDrawerContent } from "./CustomDrawerContent";
 import { useTheme } from "../theme/ThemeContext";
 import { ReportsScreen } from "../screens/admin/ReportsScreen";
 import { ExpensesScreen } from "../screens/admin/ExpensesScreen";
+import { ExpenseFormScreen } from "../screens/admin/ExpenseFormScreen";
 
 const Drawer = createDrawerNavigator<AdminDrawerParamList>();
 
@@ -36,12 +37,14 @@ export function AdminNavigator() {
   return (
     <Drawer.Navigator
       drawerContent={(props) => <CustomDrawerContent {...props} />}
+      backBehavior="history"
       screenOptions={{
         headerStyle: { backgroundColor: colors.primary },
         headerTintColor: "#fff",
         headerTitleStyle: { fontWeight: "700" },
         drawerActiveTintColor: colors.primary,
         drawerInactiveTintColor: colors.textSecondary,
+        swipeEnabled: false,
       }}
     >
       <Drawer.Screen
@@ -92,7 +95,7 @@ export function AdminNavigator() {
       <Drawer.Screen
         name="SupplierBilling"
         component={SupplierBillingScreen}
-        options={{ title: "Supplier Billing", drawerIcon: drawerIcon("receipt-outline") }}
+        options={{ title: "Purchase Billing", drawerIcon: drawerIcon("receipt-outline") }}
       />
       <Drawer.Screen
         name="Reports"
@@ -103,6 +106,11 @@ export function AdminNavigator() {
         name="Expenses"
         component={ExpensesScreen}
         options={{ title: "Expenses", drawerIcon: drawerIcon("wallet-outline") }}
+      />
+      <Drawer.Screen
+        name="ExpenseForm"
+        component={ExpenseFormScreen}
+        options={{ title: "Expense", drawerItemStyle: { display: "none" } }}
       />
       <Drawer.Screen
         name="Notifications"

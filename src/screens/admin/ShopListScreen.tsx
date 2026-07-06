@@ -20,7 +20,7 @@ export function ShopListScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <SearchBar value={search} onChangeText={(t) => { dispatch(setSearch(t)); setTimeout(() => dispatch(fetchShops()), 300); }} placeholder="Search shops..." />
-      <Pressable style={[styles.addBtn, { backgroundColor: colors.primary }]} onPress={() => navigation.navigate('ShopForm', {})}>
+      <Pressable style={[styles.addBtn, { backgroundColor: colors.primary }]} onPress={() => navigation.navigate('ShopForm', { shopId: undefined })}>
         <Text style={styles.addText}>+ Add Shop</Text>
       </Pressable>
       {loading && items.length === 0 ? (

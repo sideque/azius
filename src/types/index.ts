@@ -157,6 +157,9 @@ export interface DashboardStats {
   profitYear: number;
   outstandingBalance: number;
   paymentsCollected: number;
+  paymentsCollectedCash?: number;
+  paymentsCollectedUPI?: number;
+  paymentsCollectedBankTransfer?: number;
   expensesToday?: number;
   expensesMonth?: number;
   expensesYear?: number;

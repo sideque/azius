@@ -3,44 +3,30 @@ import {
   Alert,
   FlatList,
   Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
-import { useFocusEffect } from "@react-navigation/native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import { DrawerNavigationProp } from "@react-navigation/drawer";
 import { Ionicons } from "@expo/vector-icons";
-import {
-  CustomButton,
-  CustomInput,
-  DatePickerField,
-  Dropdown,
-  EmptyState,
-  LoadingComponent,
-  useToast,
-} from "../../components";
+import { EmptyState, LoadingComponent, useToast } from "../../components";
 import { useTheme } from "../../theme/ThemeContext";
-import {
-  createExpense,
-  deleteExpense,
-  getExpenses,
-  updateExpense,
-} from "../../services/database";
+import { deleteExpense, getExpenses } from "../../services/database";
 import { Expense } from "../../types";
-import { formatCurrency, formatDate, toISOString } from "../../utils/formatters";
+import { formatCurrency, formatDate, getDateRange } from "../../utils/formatters";
+import { AdminDrawerParamList } from "../../navigation/types";
 
-/* ───── category options ───── */
-const EXPENSE_CATEGORIES = [
-  { label: "Petrol", value: "Petrol" },
-  { label: "Vehicle", value: "Vehicle" },
-  { label: "Food", value: "Food" },
-  { label: "Rent", value: "Rent" },
-  { label: "Utilities", value: "Utilities" },
-  { label: "Maintenance", value: "Maintenance" },
-  { label: "Packaging", value: "Packaging" },
-  { label: "Transport", value: "Transport" },
-  { label: "Others", value: "Others" },
+type DateFilterPeriod = "all" | "daily" | "monthly" | "yearly";
+
+const DATE_FILTER_OPTIONS: { label: string; value: DateFilterPeriod }[] = [
+  { label: "All", value: "all" },
+  { label: "Day", value: "daily" },
+  { label: "Month", value: "monthly" },
+  { label: "Year", value: "yearly" },
 ];
 
 type IoniconsName = keyof typeof Ionicons.glyphMap;
@@ -60,19 +46,28 @@ const CATEGORY_ICONS: Record<string, IoniconsName> = {
 export function ExpensesScreen() {
   const { colors } = useTheme();
   const { showToast } = useToast();
-
-  /* ── form state ── */
-  const [category, setCategory] = useState("Petrol");
-  const [amount, setAmount] = useState("");
-  const [notes, setNotes] = useState("");
-  const [expenseDate, setExpenseDate] = useState(new Date());
-  const [saving, setSaving] = useState(false);
+  const navigation =
+    useNavigation<DrawerNavigationProp<AdminDrawerParamList>>();
 
   /* ── list state ── */
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [editingId, setEditingId] = useState<string | null>(null);
+
+  /* ── date filter ── */
+  const [dateFilter, setDateFilter] = useState<DateFilterPeriod>("all");
+  const filteredExpenses =
+    dateFilter === "all"
+      ? expenses
+      : (() => {
+          const { startDate, endDate } = getDateRange(dateFilter);
+          const start = new Date(startDate).getTime();
+          const end = new Date(endDate).getTime();
+          return expenses.filter((e) => {
+            const t = new Date(e.expenseDate).getTime();
+            return t >= start && t <= end;
+          });
+        })();
 
   /* ── summary ── */
   const todayStr = new Date().toISOString().slice(0, 10);
@@ -105,51 +100,8 @@ export function ExpensesScreen() {
     }, []),
   );
 
-  /* ── add ── */
-  const handleAdd = async () => {
-    const numAmount = parseFloat(amount);
-    if (!amount || isNaN(numAmount) || numAmount <= 0) {
-      showToast("Enter a valid amount", "error");
-      return;
-    }
-    try {
-      setSaving(true);
-      const dateStr = toISOString(expenseDate);
-      if (editingId) {
-        await updateExpense(editingId, {
-          category,
-          amount: numAmount,
-          notes: notes.trim(),
-          expenseDate: dateStr,
-        });
-        showToast("Expense updated successfully", "success");
-        setEditingId(null);
-      } else {
-        await createExpense(category, numAmount, notes.trim(), dateStr);
-        showToast("Expense added successfully", "success");
-      }
-      setAmount("");
-      setNotes("");
-      setCategory("Petrol");
-      setExpenseDate(new Date());
-      await loadExpenses();
-    } catch {
-      showToast("Failed to add expense", "error");
-    } finally {
-      setSaving(false);
-    }
-  };
-
   const handleEdit = (exp: Expense) => {
-    setEditingId(exp.id);
-    setCategory(exp.category);
-    setAmount(String(exp.amount));
-    setNotes(exp.notes ?? "");
-    try {
-      setExpenseDate(new Date(exp.expenseDate));
-    } catch {
-      setExpenseDate(new Date());
-    }
+    navigation.navigate("ExpenseForm", { expense: exp });
   };
 
   /* ── delete ── */
@@ -191,7 +143,7 @@ export function ExpensesScreen() {
   };
 
   /* ── group by date ── */
-  const grouped = expenses.reduce<Record<string, Expense[]>>((acc, e) => {
+  const grouped = filteredExpenses.reduce<Record<string, Expense[]>>((acc, e) => {
     const key = e.expenseDate.slice(0, 10);
     if (!acc[key]) acc[key] = [];
     acc[key].push(e);
@@ -238,72 +190,55 @@ export function ExpensesScreen() {
         </View>
       </View>
 
-      {/* ── Add Expense Form ── */}
-      <View
-        style={[
-          styles.formCard,
-          { backgroundColor: colors.card, borderColor: colors.border },
-        ]}
+      {/* ── Add Expense ── */}
+      <Pressable
+        style={[styles.addBtn, { backgroundColor: colors.primary }]}
+        onPress={() => navigation.navigate("ExpenseForm", { expense: undefined })}
       >
-        <Text style={[styles.formTitle, { color: colors.text }]}>
-          Add Expense
-        </Text>
-
-        <Dropdown
-          label="Category"
-          value={category}
-          options={EXPENSE_CATEGORIES}
-          onChange={setCategory}
-        />
-
-        <CustomInput
-          label="Amount"
-          value={amount}
-          onChangeText={setAmount}
-          placeholder="Enter amount"
-          keyboardType="numeric"
-        />
-
-        <DatePickerField
-          label="Date"
-          value={expenseDate}
-          onChange={setExpenseDate}
-        />
-
-        <CustomInput
-          label="Notes (optional)"
-          value={notes}
-          onChangeText={setNotes}
-          placeholder="E.g., Diesel for delivery van"
-          multiline
-        />
-
-        <CustomButton
-          title={
-            saving
-              ? editingId
-                ? "Saving…"
-                : "Adding…"
-              : editingId
-              ? "Save Changes"
-              : "Add Expense"
-          }
-          onPress={handleAdd}
-          disabled={saving}
-          style={{ marginTop: 8 }}
-        />
-      </View>
+        <Text style={styles.addText}>+ Add Expense</Text>
+      </Pressable>
 
       {/* ── Expense History ── */}
       <Text style={[styles.sectionTitle, { color: colors.text }]}>
         Expense History
       </Text>
 
+      <View style={styles.filterRow}>
+        {DATE_FILTER_OPTIONS.map((opt) => (
+          <Pressable
+            key={opt.value}
+            onPress={() => setDateFilter(opt.value)}
+            style={[
+              styles.filterChip,
+              {
+                backgroundColor:
+                  dateFilter === opt.value ? colors.primary : colors.surface,
+                borderColor: colors.border,
+              },
+            ]}
+          >
+            <Text
+              style={{
+                color: dateFilter === opt.value ? "#fff" : colors.text,
+                fontSize: 12,
+                fontWeight: "600",
+              }}
+            >
+              {opt.label}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
+
       {groupedKeys.length === 0 ? (
         <EmptyState
           icon="wallet-outline"
-          title="No Expenses Yet"
-          message="Add your first expense above"
+          title={dateFilter === "all" ? "No Expenses Yet" : "No Matching Expenses"}
+          message={
+            dateFilter === "all"
+              ? "Add your first expense above"
+              : "No expenses found for this period"
+          }
         />
       ) : (
         groupedKeys.map((dateKey) => {
@@ -435,20 +370,36 @@ const styles = StyleSheet.create({
   summaryLabel: { fontSize: 13, marginBottom: 4 },
   summaryValue: { fontSize: 20, fontWeight: "700" },
 
-  /* form */
-  formCard: {
-    borderRadius: 14,
-    borderWidth: 1,
-    padding: 16,
-    marginBottom: 24,
+  /* add button */
+  addBtn: {
+    padding: 14,
+    borderRadius: 12,
+    alignItems: "center",
+    marginBottom: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 1.5,
   },
-  formTitle: { fontSize: 18, fontWeight: "700", marginBottom: 12 },
+  addText: { color: "#fff", fontWeight: "700", fontSize: 15, letterSpacing: 0.2 },
 
   /* history */
   sectionTitle: {
     fontSize: 18,
     fontWeight: "700",
     marginBottom: 12,
+  },
+  filterRow: {
+    flexDirection: "row",
+    gap: 6,
+    marginBottom: 16,
+  },
+  filterChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 16,
+    borderWidth: 1,
   },
 
   dayGroup: { marginBottom: 16 },

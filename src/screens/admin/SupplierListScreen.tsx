@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useState } from "react";
 import {
   FlatList,
   Pressable,
@@ -9,9 +9,19 @@ import {
 } from "react-native";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { DrawerNavigationProp } from "@react-navigation/drawer";
-import { EmptyState, LoadingSkeleton, SearchBar } from "../../components";
+import {
+  ConfirmationDialog,
+  EmptyState,
+  LoadingSkeleton,
+  SearchBar,
+  useToast,
+} from "../../components";
 import { useAppDispatch, useAppSelector } from "../../store/hooks";
-import { fetchSuppliers, setSearch } from "../../store/slices/supplierSlice";
+import {
+  fetchSuppliers,
+  removeSupplier,
+  setSearch,
+} from "../../store/slices/supplierSlice";
 import { useTheme } from "../../theme/ThemeContext";
 import { AdminDrawerParamList } from "../../navigation/types";
 import { SupplierCard } from "../../components/Cards";
@@ -21,7 +31,9 @@ export function SupplierListScreen() {
   const dispatch = useAppDispatch();
   const navigation =
     useNavigation<DrawerNavigationProp<AdminDrawerParamList>>();
+  const { showToast } = useToast();
   const { items, loading, search } = useAppSelector((s) => s.suppliers);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const load = useCallback(() => dispatch(fetchSuppliers()), [dispatch]);
   useFocusEffect(
@@ -29,6 +41,14 @@ export function SupplierListScreen() {
       load();
     }, [load]),
   );
+
+  const handleDelete = async () => {
+    if (deleteId) {
+      await dispatch(removeSupplier(deleteId));
+      showToast("Supplier deleted");
+      setDeleteId(null);
+    }
+  };
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -72,10 +92,19 @@ export function SupplierListScreen() {
               onPress={() =>
                 navigation.navigate("SupplierForm", { supplierId: item.id })
               }
+              onDelete={() => setDeleteId(item.id)}
             />
           )}
         />
       )}
+      <ConfirmationDialog
+        visible={!!deleteId}
+        title="Delete Supplier"
+        message="Are you sure you want to delete this supplier?"
+        onConfirm={handleDelete}
+        onCancel={() => setDeleteId(null)}
+        destructive
+      />
     </View>
   );
 }

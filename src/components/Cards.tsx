@@ -171,9 +171,11 @@ export function PaymentCard({
 export function SupplierCard({
   supplier,
   onPress,
+  onDelete,
 }: {
   supplier: Supplier;
   onPress?: () => void;
+  onDelete?: () => void;
 }) {
   const { colors } = useTheme();
   const initials = supplier.supplierName.substring(0, 2).toUpperCase();
@@ -201,6 +203,18 @@ export function SupplierCard({
             {supplier.phoneNumber}
           </Text>
         </View>
+        {onDelete && (
+          <Pressable
+            onPress={onDelete}
+            style={({ pressed }) => [
+              styles.supplierDeleteBtn,
+              { backgroundColor: colors.errorLight },
+              pressed && { opacity: 0.7 },
+            ]}
+          >
+            <Ionicons name="trash-outline" size={16} color={colors.error} />
+          </Pressable>
+        )}
         <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
       </View>
 
@@ -380,6 +394,7 @@ const styles = StyleSheet.create({
   supplierHeader: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   supplierAvatar: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   supplierAvatarText: { fontSize: 16, fontWeight: '800' },
+  supplierDeleteBtn: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   supplierFooter: { marginTop: 12, paddingTop: 12, borderTopWidth: 1 },
   iconRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
 

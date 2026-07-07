@@ -46,10 +46,14 @@ export function toISOString(date?: Date): string {
 }
 
 export function getDateRange(
-  period: "daily" | "monthly" | "yearly" | "custom",
+  period: "daily" | "monthly" | "yearly" | "all" | "custom",
   start?: string,
   end?: string,
 ) {
+  if (period === "all") {
+    return { startDate: "", endDate: "" };
+  }
+
   const now = new Date();
   let startDate: Date;
   let endDate: Date = now;

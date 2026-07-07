@@ -10,6 +10,7 @@ import {
 } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import {
+  ConfirmationDialog,
   Dropdown,
   EmptyState,
   LedgerCard,
@@ -52,6 +53,7 @@ export function ShopLedgerScreen() {
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [pendingDeleteEntry, setPendingDeleteEntry] = useState<LedgerEntry | null>(null);
 
   const loadShops = useCallback(() => dispatch(fetchShops()), [dispatch]);
   useFocusEffect(
@@ -122,48 +124,43 @@ export function ShopLedgerScreen() {
 
   const handleDeleteEntry = (entry: LedgerEntry | null = selectedEntry) => {
     if (!entry) return;
-    Alert.alert(
-      "Confirm Delete",
-      `Are you sure you want to delete this ${entry.transactionType}?`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              let targetId = entryDetails?.id;
-              // If we are deleting directly from the card and don't have details loaded yet
-              if (!targetId || selectedEntry?.id !== entry.id) {
-                if (entry.transactionType === "sale") {
-                  const details = await db.getSaleByInvoiceNumber(
-                    entry.referenceNumber,
-                  );
-                  targetId = details?.id;
-                } else {
-                  const details = await db.getPaymentByReceiptNumber(
-                    entry.referenceNumber,
-                  );
-                  targetId = details?.id;
-                }
-              }
+    setPendingDeleteEntry(entry);
+  };
 
-              if (!targetId) throw new Error("Could not find record to delete");
+  const confirmDeleteEntry = async () => {
+    const entry = pendingDeleteEntry;
+    if (!entry) return;
+    try {
+      let targetId = entryDetails?.id;
+      // If we are deleting directly from the card and don't have details loaded yet
+      if (!targetId || selectedEntry?.id !== entry.id) {
+        if (entry.transactionType === "sale") {
+          const details = await db.getSaleByInvoiceNumber(
+            entry.referenceNumber,
+          );
+          targetId = details?.id;
+        } else {
+          const details = await db.getPaymentByReceiptNumber(
+            entry.referenceNumber,
+          );
+          targetId = details?.id;
+        }
+      }
 
-              if (entry.transactionType === "sale") {
-                await dispatch(removeSale(targetId)).unwrap();
-              } else if (entry.transactionType === "payment") {
-                await dispatch(removePayment(targetId)).unwrap();
-              }
-              setShowDetailsModal(false);
-              loadLedger(shopId, period); // Reload ledger
-            } catch (e: any) {
-              Alert.alert("Error", e?.message || "Failed to delete");
-            }
-          },
-        },
-      ],
-    );
+      if (!targetId) throw new Error("Could not find record to delete");
+
+      if (entry.transactionType === "sale") {
+        await dispatch(removeSale(targetId)).unwrap();
+      } else if (entry.transactionType === "payment") {
+        await dispatch(removePayment(targetId)).unwrap();
+      }
+      setPendingDeleteEntry(null);
+      setShowDetailsModal(false);
+      loadLedger(shopId, period); // Reload ledger
+    } catch (e: any) {
+      setPendingDeleteEntry(null);
+      Alert.alert("Error", e?.message || "Failed to delete");
+    }
   };
 
   const lastSale = entries.find((e) => e.transactionType === "sale");
@@ -369,6 +366,15 @@ export function ShopLedgerScreen() {
           </Text>
         )}
       </Modal>
+
+      <ConfirmationDialog
+        visible={!!pendingDeleteEntry}
+        title="Confirm Delete"
+        message={`Are you sure you want to delete this ${pendingDeleteEntry?.transactionType ?? "entry"}?`}
+        onConfirm={confirmDeleteEntry}
+        onCancel={() => setPendingDeleteEntry(null)}
+        destructive
+      />
     </View>
   );
 }

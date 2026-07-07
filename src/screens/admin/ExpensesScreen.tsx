@@ -1,6 +1,5 @@
 import React, { useCallback, useState } from "react";
 import {
-  Alert,
   FlatList,
   Platform,
   Pressable,
@@ -13,7 +12,7 @@ import {
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { DrawerNavigationProp } from "@react-navigation/drawer";
 import { Ionicons } from "@expo/vector-icons";
-import { EmptyState, LoadingComponent, useToast } from "../../components";
+import { ConfirmationDialog, EmptyState, LoadingComponent, useToast } from "../../components";
 import { useTheme } from "../../theme/ThemeContext";
 import { deleteExpense, getExpenses } from "../../services/database";
 import { Expense } from "../../types";
@@ -53,6 +52,7 @@ export function ExpensesScreen() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<Expense | null>(null);
 
   /* ── date filter ── */
   const [dateFilter, setDateFilter] = useState<DateFilterPeriod>("all");
@@ -108,38 +108,33 @@ export function ExpensesScreen() {
   const handleDelete = (expense: Expense) => {
     // mark as pending so UI shows loading state while confirmation is active
     setDeletingId(expense.id);
-    Alert.alert(
-      "Delete Expense",
-      `Delete ${formatCurrency(expense.amount)} (${expense.category}) expense?`,
-      [
-        {
-          text: "Cancel",
-          style: "cancel",
-          onPress: () => setDeletingId(null),
-        },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              // optimistic remove from UI
-              setExpenses((prev) => prev.filter((p) => p.id !== expense.id));
-              await deleteExpense(expense.id);
-              showToast("Expense deleted", "success");
-              // ensure sync with server
-              await loadExpenses();
-            } catch {
-              console.error("Failed to delete expense", expense.id);
-              showToast("Failed to delete expense", "error");
-              // reload to restore removed item
-              await loadExpenses();
-            } finally {
-              setDeletingId(null);
-            }
-          },
-        },
-      ],
-    );
+    setPendingDelete(expense);
+  };
+
+  const cancelDelete = () => {
+    setPendingDelete(null);
+    setDeletingId(null);
+  };
+
+  const confirmDelete = async () => {
+    const expense = pendingDelete;
+    if (!expense) return;
+    setPendingDelete(null);
+    try {
+      // optimistic remove from UI
+      setExpenses((prev) => prev.filter((p) => p.id !== expense.id));
+      await deleteExpense(expense.id);
+      showToast("Expense deleted", "success");
+      // ensure sync with server
+      await loadExpenses();
+    } catch {
+      console.error("Failed to delete expense", expense.id);
+      showToast("Failed to delete expense", "error");
+      // reload to restore removed item
+      await loadExpenses();
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   /* ── group by date ── */
@@ -156,6 +151,7 @@ export function ExpensesScreen() {
   if (loading) return <LoadingComponent />;
 
   return (
+    <>
     <ScrollView
       style={[styles.container, { backgroundColor: colors.background }]}
       contentContainerStyle={styles.content}
@@ -346,6 +342,20 @@ export function ExpensesScreen() {
 
       <View style={{ height: 40 }} />
     </ScrollView>
+
+    <ConfirmationDialog
+      visible={!!pendingDelete}
+      title="Delete Expense"
+      message={
+        pendingDelete
+          ? `Delete ${formatCurrency(pendingDelete.amount)} (${pendingDelete.category}) expense?`
+          : ""
+      }
+      onConfirm={confirmDelete}
+      onCancel={cancelDelete}
+      destructive
+    />
+    </>
   );
 }
 

@@ -38,13 +38,13 @@ export function CustomInput({ label, error, style, onFocus, onBlur, ...props }: 
         style={[
           styles.input,
           { 
-            backgroundColor: colors.surface, 
+            backgroundColor: props.editable === false ? colors.background : colors.surface, 
             borderColor: error 
               ? colors.error 
               : isFocused 
                 ? colors.primary 
                 : colors.border, 
-            color: colors.text,
+            color: props.editable === false ? colors.textMuted : colors.text,
             shadowColor: isFocused ? colors.primary : 'rgba(0,0,0,0.02)',
           },
           style,

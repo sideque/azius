@@ -52,7 +52,6 @@ export function LoginScreen({ navigation }: Props) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [selectedRole, setSelectedRole] = useState<"admin" | "sales">("admin");
-  const [rememberMe, setRememberMe] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
 
@@ -80,7 +79,7 @@ export function LoginScreen({ navigation }: Props) {
   //         );
   //         return;
   //       }
-  //       dispatch(loginSuccess({ user, rememberMe }));
+  //       dispatch(loginSuccess({ user }));
   //       showToast("Login successful!");
   //       navigation.replace("RoleSelection", { role: selectedRole });
   //     } else {
@@ -122,6 +121,8 @@ export function LoginScreen({ navigation }: Props) {
         id: uid,
         username: data.username,
         role: data.role,
+        name: data.name,
+        email: data.email,
       };
 
       // 3. Role check
@@ -132,7 +133,7 @@ export function LoginScreen({ navigation }: Props) {
       // }
 
       // 4. Success
-      dispatch(loginSuccess({ user, rememberMe }));
+      dispatch(loginSuccess({ user }));
       await AsyncStorage.setItem("@auth_user", JSON.stringify(user));
       showToast("Login successful!");
       navigation.replace("RoleSelection", { role: selectedRole });
@@ -242,18 +243,6 @@ export function LoginScreen({ navigation }: Props) {
             secureTextEntry
             error={errors.password}
           />
-          <Pressable
-            style={styles.remember}
-            onPress={() => setRememberMe(!rememberMe)}
-          >
-            <View
-              style={[styles.checkbox, rememberMe && styles.checkboxActive]}
-            >
-              {rememberMe && <Ionicons name="checkmark" size={14} color="#fff" />}
-            </View>
-            <Text style={styles.rememberText}>Remember Me</Text>
-          </Pressable>
-
           <CustomButton title="Login" onPress={handleLogin} loading={loading} />
         </View>
       </ScrollView>
@@ -383,24 +372,6 @@ const styles = StyleSheet.create({
   roleButtonTextActive: {
     color: "#fff",
   },
-
-  remember: { flexDirection: "row", alignItems: "center", marginBottom: 20 },
-  checkbox: {
-    width: 22,
-    height: 22,
-    borderRadius: 6,
-    borderWidth: 2,
-    borderColor: THEME.gradientMid,
-    marginRight: 10,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "transparent",
-  },
-  checkboxActive: {
-    backgroundColor: THEME.gold,
-    borderColor: THEME.gold,
-  },
-  rememberText: { color: THEME.text, fontSize: 14 },
 
   hint: {
     textAlign: "center",

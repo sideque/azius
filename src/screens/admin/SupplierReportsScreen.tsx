@@ -447,10 +447,8 @@
 // });
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  Alert,
   FlatList,
   RefreshControl,
-  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -459,6 +457,7 @@ import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { DrawerNavigationProp } from "@react-navigation/drawer";
 import { Ionicons } from "@expo/vector-icons";
 import {
+  ConfirmationDialog,
   CustomButton,
   Dropdown,
   EmptyState,
@@ -487,6 +486,7 @@ const periodOptions = [
   { label: "Daily", value: "daily" },
   { label: "Monthly", value: "monthly" },
   { label: "Yearly", value: "yearly" },
+  { label: "All Time", value: "all" },
 ];
 
 type LedgerEntry = {
@@ -508,13 +508,16 @@ export function SupplierReportsScreen() {
   const { showToast } = useToast();
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [selectedSupplierId, setSelectedSupplierId] = useState("");
-  const [period, setPeriod] = useState<"daily" | "monthly" | "yearly">(
+  const [period, setPeriod] = useState<"daily" | "monthly" | "yearly" | "all">(
     "monthly",
   );
   const [bills, setBills] = useState<SupplierPurchaseBill[]>([]);
   const [payments, setPayments] = useState<SupplierPaymentWithSupplier[]>([]);
   const [loading, setLoading] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<
+    { type: "bill" | "payment"; id: string } | null
+  >(null);
 
   const selectedSupplier = useMemo(
     () => suppliers.find((supplier) => supplier.id === selectedSupplierId),
@@ -537,6 +540,9 @@ export function SupplierReportsScreen() {
   );
 
   const getPeriodStartDate = () => {
+    if (period === "all") {
+      return "";
+    }
     const now = new Date();
     if (period === "daily") {
       return new Date(
@@ -586,55 +592,37 @@ export function SupplierReportsScreen() {
   };
 
   const confirmDeleteBill = (billId: string) => {
-    Alert.alert(
-      "Delete Purchase Bill",
-      "Are you sure you want to delete this bill? This will update the supplier outstanding balance.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: async () => {
-            setLoading(true);
-            try {
-              await deleteSupplierBill(billId);
-              showToast("Purchase bill deleted");
-              await loadReport();
-            } catch (error) {
-              showToast("Failed to delete purchase bill", "error");
-            } finally {
-              setLoading(false);
-            }
-          },
-        },
-      ],
-    );
+    setPendingDelete({ type: "bill", id: billId });
   };
 
   const confirmDeletePayment = (paymentId: string) => {
-    Alert.alert(
-      "Delete Supplier Payment",
-      "Are you sure you want to delete this payment? This will update the supplier outstanding balance.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: async () => {
-            setLoading(true);
-            try {
-              await deleteSupplierPayment(paymentId);
-              showToast("Supplier payment deleted");
-              await loadReport();
-            } catch (error) {
-              showToast("Failed to delete supplier payment", "error");
-            } finally {
-              setLoading(false);
-            }
-          },
-        },
-      ],
-    );
+    setPendingDelete({ type: "payment", id: paymentId });
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!pendingDelete) return;
+    const { type, id } = pendingDelete;
+    setPendingDelete(null);
+    setLoading(true);
+    try {
+      if (type === "bill") {
+        await deleteSupplierBill(id);
+        showToast("Purchase bill deleted");
+      } else {
+        await deleteSupplierPayment(id);
+        showToast("Supplier payment deleted");
+      }
+      await loadReport();
+    } catch (error) {
+      showToast(
+        type === "bill"
+          ? "Failed to delete purchase bill"
+          : "Failed to delete supplier payment",
+        "error",
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -652,8 +640,8 @@ export function SupplierReportsScreen() {
     (sum, payment) => sum + payment.amount,
     0,
   );
-  const balance =
-    totalBills + (selectedSupplier?.outstandingBalance ?? 0) - totalPayments;
+  const openingBalance = selectedSupplier?.openingBalance ?? 0;
+  const balance = openingBalance + totalBills - totalPayments;
 
   // Chronological ledger (oldest -> newest) used to compute a running balance,
   // then reversed so the newest entry appears first, like a real passbook.
@@ -702,7 +690,6 @@ export function SupplierReportsScreen() {
       value: supplier.id,
     })),
   ];
-
   const periodLabel =
     periodOptions.find((option) => option.value === period)?.label ?? "";
 
@@ -750,17 +737,31 @@ export function SupplierReportsScreen() {
               </Text>
             </View>
             <View style={styles.ledgerAmountBlock}>
-              <Text style={[styles.ledgerAmount, { color: accent }]}>
-                {isBill ? "+" : "−"}
-                {formatCurrency(item.amount)}
+              <View
+                style={[
+                  styles.amountTag,
+                  {
+                    backgroundColor: isBill
+                      ? colors.errorLight
+                      : colors.successLight,
+                  },
+                ]}
+              >
+                <Text style={[styles.amountTagText, { color: accent }]}>
+                  {isBill ? "+" : "−"}
+                  {formatCurrency(item.amount)}
+                </Text>
+              </View>
+              <Text style={[styles.ledgerBalanceBig, { color: colors.text }]}>
+                {formatCurrency(item.balance)}
               </Text>
               <Text
                 style={[
-                  styles.ledgerRunningBalance,
+                  styles.ledgerBalanceCaption,
                   { color: colors.textSecondary },
                 ]}
               >
-                Bal {formatCurrency(item.balance)}
+                Balance
               </Text>
             </View>
           </View>
@@ -915,142 +916,201 @@ export function SupplierReportsScreen() {
   };
 
   return (
-    <ScrollView
-      style={[styles.container, { backgroundColor: colors.background }]}
-      refreshControl={
-        <RefreshControl
-          refreshing={loading}
-          onRefresh={loadReport}
-          colors={[colors.primary]}
-        />
-      }
-    >
-      <Dropdown
-        label="Supplier"
-        options={supplierOptions}
-        value={selectedSupplierId}
-        onChange={setSelectedSupplierId}
-      />
-      <Dropdown
-        label="Period"
-        options={periodOptions}
-        value={period}
-        onChange={(value) => setPeriod(value as "daily" | "monthly" | "yearly")}
-      />
+    <View style={[styles.screen, { backgroundColor: colors.background }]}>
+      <View style={styles.topSection}>
+        <View style={styles.filterRow}>
+          <View style={{ flex: 1 }}>
+            <Dropdown
+              label="Supplier"
+              options={supplierOptions}
+              value={selectedSupplierId}
+              onChange={setSelectedSupplierId}
+            />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Dropdown
+              label="Period"
+              options={periodOptions}
+              value={period}
+              onChange={(value) =>
+                setPeriod(value as "daily" | "monthly" | "yearly" | "all")
+              }
+            />
+          </View>
+        </View>
 
-      {!selectedSupplier ? (
-        <EmptyState
-          title="Select a supplier"
-          message="Choose a supplier to view purchase and payment history."
-          icon="business-outline"
-        />
-      ) : (
-        <>
-          {/* Statement header */}
-          <View
-            style={[
-              styles.statementHeader,
-              { backgroundColor: colors.card, borderColor: colors.border },
-            ]}
-          >
-            <View style={styles.statementHeaderTop}>
-              <View
-                style={[
-                  styles.avatarCircle,
-                  { backgroundColor: colors.primaryLight },
-                ]}
-              >
-                <Text style={[styles.avatarText, { color: colors.primary }]}>
-                  {selectedSupplier.supplierName?.charAt(0)?.toUpperCase() ??
-                    "S"}
+        {!selectedSupplier ? (
+          <EmptyState
+            title="Select a supplier"
+            message="Choose a supplier to view purchase and payment history."
+            icon="business-outline"
+          />
+        ) : (
+          <>
+            {/* Statement header */}
+            <View
+              style={[
+                styles.statementHeader,
+                { backgroundColor: colors.card, borderColor: colors.border },
+              ]}
+            >
+              <View style={styles.statementHeaderTop}>
+                <View
+                  style={[
+                    styles.avatarCircle,
+                    { backgroundColor: colors.primaryLight },
+                  ]}
+                >
+                  <Text style={[styles.avatarText, { color: colors.primary }]}>
+                    {selectedSupplier.supplierName?.charAt(0)?.toUpperCase() ?? "S"}
+                  </Text>
+                </View>
+
+                <View style={{ flex: 1, marginLeft: 12 }}>
+                  <Text style={[styles.statementName, { color: colors.text }]}>
+                    {selectedSupplier.supplierName}
+                  </Text>
+                  <Text
+                    style={[styles.statementSub, { color: colors.textSecondary }]}
+                  >
+                    {periodLabel} Statement
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.statementDivider} />
+
+              {/* Opening Balance — the balance carried forward before this period */}
+              <View style={styles.balanceRow}>
+                <View style={styles.balanceLabelBlock}>
+                  <Text style={[styles.balanceLabel, { color: colors.text }]}>
+                    Opening Balance
+                  </Text>
+                  <Text
+                    style={[
+                      styles.balanceCaption,
+                      { color: colors.textSecondary },
+                    ]}
+                  >
+                    Carried forward from before this period
+                  </Text>
+                </View>
+                <Text
+                  style={[
+                    styles.balanceValueSmall,
+                    {
+                      color: openingBalance > 0 ? colors.error : colors.success,
+                    },
+                  ]}
+                >
+                  {formatCurrency(openingBalance)}
                 </Text>
               </View>
-              <View style={{ flex: 1, marginLeft: 12 }}>
-                <Text style={[styles.statementName, { color: colors.text }]}>
-                  {selectedSupplier.supplierName}
-                </Text>
+
+              {/* Shows how this period's activity moves opening -> net balance */}
+              <View style={styles.balanceMathRow}>
                 <Text
-                  style={[styles.statementSub, { color: colors.textSecondary }]}
+                  style={[styles.balanceMathText, { color: colors.textSecondary }]}
                 >
-                  {periodLabel} statement
+                  + {formatCurrency(totalBills)} bills − {formatCurrency(totalPayments)} paid
+                </Text>
+              </View>
+
+              {/* Net Balance — what is currently owed after this period's bills & payments */}
+              <View
+                style={[
+                  styles.balanceRow,
+                  styles.netBalanceRow,
+                  {
+                    backgroundColor: balance > 0 ? colors.errorLight : colors.successLight,
+                  },
+                ]}
+              >
+                <View style={styles.balanceLabelBlock}>
+                  <Text style={[styles.balanceLabelNet, { color: colors.text }]}>
+                    Net Balance
+                  </Text>
+                  <Text
+                    style={[
+                      styles.balanceCaption,
+                      { color: colors.textSecondary },
+                    ]}
+                  >
+                    {balance > 0
+                      ? "You owe this supplier"
+                      : balance < 0
+                        ? "Supplier owes you (credit)"
+                        : "Settled — nothing due"}
+                  </Text>
+                </View>
+                <Text
+                  style={[
+                    styles.statementBalanceValue,
+                    { color: balance > 0 ? colors.error : colors.success },
+                  ]}
+                >
+                  {formatCurrency(balance)}
                 </Text>
               </View>
             </View>
 
-            <View style={styles.statementDivider} />
+            {/* Summary stat grid */}
+            <View style={styles.statGrid}>
+              <View
+                style={[
+                  styles.statCell,
+                  { backgroundColor: colors.card, borderColor: colors.border },
+                ]}
+              >
+                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
+                  TOTAL BILLS
+                </Text>
+                <Text style={[styles.statValue, { color: colors.error }]}>
+                  {formatCurrency(totalBills)}
+                </Text>
+                <Text style={[styles.statCount, { color: colors.textSecondary }]}>
+                  {bills.length} bill{bills.length !== 1 ? "s" : ""}
+                </Text>
+              </View>
+              <View
+                style={[
+                  styles.statCell,
+                  { backgroundColor: colors.card, borderColor: colors.border },
+                ]}
+              >
+                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
+                  TOTAL PAID
+                </Text>
+                <Text style={[styles.statValue, { color: colors.success }]}>
+                  {formatCurrency(totalPayments)}
+                </Text>
+                <Text style={[styles.statCount, { color: colors.textSecondary }]}>
+                  {payments.length} payment{payments.length !== 1 ? "s" : ""}
+                </Text>
+              </View>
+            </View>
 
-            <View style={styles.statementBalanceRow}>
+            {/* Ledger section header — stays fixed; only the entries below scroll */}
+            <View style={styles.ledgerSectionHeader}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                Ledger
+              </Text>
               <Text
                 style={[
-                  styles.statementBalanceLabel,
+                  styles.ledgerSectionCount,
                   { color: colors.textSecondary },
                 ]}
               >
-                Net Outstanding
-              </Text>
-              <Text
-                style={[
-                  styles.statementBalanceValue,
-                  { color: balance > 0 ? colors.error : colors.success },
-                ]}
-              >
-                {formatCurrency(selectedSupplier.outstandingBalance ?? balance)}
+                {ledgerEntries.length} entr
+                {ledgerEntries.length !== 1 ? "ies" : "y"}
               </Text>
             </View>
-          </View>
+          </>
+        )}
+      </View>
 
-          {/* Summary stat grid */}
-          <View style={styles.statGrid}>
-            <View
-              style={[
-                styles.statCell,
-                { backgroundColor: colors.card, borderColor: colors.border },
-              ]}
-            >
-              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
-                TOTAL BILLS
-              </Text>
-              <Text style={[styles.statValue, { color: colors.error }]}>
-                {formatCurrency(totalBills)}
-              </Text>
-              <Text style={[styles.statCount, { color: colors.textSecondary }]}>
-                {bills.length} bill{bills.length !== 1 ? "s" : ""}
-              </Text>
-            </View>
-            <View
-              style={[
-                styles.statCell,
-                { backgroundColor: colors.card, borderColor: colors.border },
-              ]}
-            >
-              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
-                TOTAL PAID
-              </Text>
-              <Text style={[styles.statValue, { color: colors.success }]}>
-                {formatCurrency(totalPayments)}
-              </Text>
-              <Text style={[styles.statCount, { color: colors.textSecondary }]}>
-                {payments.length} payment{payments.length !== 1 ? "s" : ""}
-              </Text>
-            </View>
-          </View>
-
-          {/* Unified ledger */}
-          <View style={styles.ledgerSectionHeader}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>
-              Ledger
-            </Text>
-            <Text
-              style={[
-                styles.ledgerSectionCount,
-                { color: colors.textSecondary },
-              ]}
-            >
-              {ledgerEntries.length} entr
-              {ledgerEntries.length !== 1 ? "ies" : "y"}
-            </Text>
-          </View>
-
+      {selectedSupplier && (
+        <View style={styles.ledgerListWrapper}>
           {ledgerEntries.length === 0 ? (
             <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
               No activity for this period.
@@ -1059,32 +1119,64 @@ export function SupplierReportsScreen() {
             <FlatList
               data={ledgerEntries}
               keyExtractor={(item) => `${item.type}-${item.id}`}
-              scrollEnabled={false}
               renderItem={renderLedgerRow}
               ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
+              contentContainerStyle={styles.ledgerListContent}
+              refreshControl={
+                <RefreshControl
+                  refreshing={loading}
+                  onRefresh={loadReport}
+                  colors={[colors.primary]}
+                />
+              }
             />
           )}
+        </View>
+      )}
 
+      {selectedSupplier && (
+        <View
+          style={[
+            styles.footer,
+            { backgroundColor: colors.background, borderTopColor: colors.border },
+          ]}
+        >
           <CustomButton
             title="Make Supplier Payment"
             onPress={() => navigation.navigate("SupplierPayments")}
-            style={{ marginTop: 24, marginBottom: 8 }}
           />
-        </>
+        </View>
       )}
-    </ScrollView>
+
+      <ConfirmationDialog
+        visible={!!pendingDelete}
+        title={pendingDelete?.type === "bill" ? "Delete Purchase Bill" : "Delete Supplier Payment"}
+        message={`Are you sure you want to delete this ${pendingDelete?.type === "bill" ? "bill" : "payment"}? This will update the supplier outstanding balance.`}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setPendingDelete(null)}
+        destructive
+      />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16 },
+  screen: { flex: 1 },
+  topSection: { paddingHorizontal: 16, paddingTop: 10 },
+  filterRow: { flexDirection: "row", gap: 10 },
+  ledgerListWrapper: { flex: 1 },
+  ledgerListContent: { paddingHorizontal: 16, paddingBottom: 16 },
+  footer: {
+    padding: 16,
+    borderTopWidth: 1,
+  },
 
   // Statement header
   statementHeader: {
-    marginTop: 16,
-    borderRadius: 16,
+    marginTop: 4,
+    borderRadius: 14,
     borderWidth: 1,
-    padding: 18,
+    padding: 12,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.05,
@@ -1093,35 +1185,49 @@ const styles = StyleSheet.create({
   },
   statementHeaderTop: { flexDirection: "row", alignItems: "center" },
   avatarCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 12, // soft rounded corners instead of circle
+    width: 36,
+    height: 36,
+    borderRadius: 10, // soft rounded corners instead of circle
     alignItems: "center",
     justifyContent: "center",
   },
-  avatarText: { fontSize: 16, fontWeight: "800" },
-  statementName: { fontSize: 17, fontWeight: "700" },
-  statementSub: { fontSize: 12, marginTop: 2 },
+  avatarText: { fontSize: 14, fontWeight: "800" },
+  statementName: { fontSize: 15, fontWeight: "700" },
+  statementSub: { fontSize: 11, marginTop: 1 },
   statementDivider: {
     height: 1,
     backgroundColor: "rgba(128,128,128,0.15)",
-    marginVertical: 14,
+    marginVertical: 8,
   },
-  statementBalanceRow: {
+  statementBalanceValue: { fontSize: 19, fontWeight: "800" },
+
+  // Opening -> Net balance breakdown
+  balanceRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
   },
-  statementBalanceLabel: { fontSize: 13, fontWeight: "600" },
-  statementBalanceValue: { fontSize: 22, fontWeight: "800" },
+  balanceLabelBlock: { flex: 1, marginRight: 12 },
+  balanceLabel: { fontSize: 13, fontWeight: "700" },
+  balanceLabelNet: { fontSize: 14, fontWeight: "800" },
+  balanceCaption: { fontSize: 11, marginTop: 2 },
+  balanceValueSmall: { fontSize: 15, fontWeight: "700" },
+  balanceMathRow: { alignItems: "center", marginVertical: 6 },
+  balanceMathText: { fontSize: 11, fontWeight: "600" },
+  netBalanceRow: {
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    marginTop: 2,
+  },
 
   // Stat grid
-  statGrid: { flexDirection: "row", gap: 12, marginTop: 14 },
+  statGrid: { flexDirection: "row", gap: 10, marginTop: 8 },
   statCell: {
     flex: 1,
-    borderRadius: 14,
+    borderRadius: 12,
     borderWidth: 1,
-    padding: 14,
+    padding: 10,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
@@ -1129,16 +1235,16 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   statLabel: { fontSize: 10, fontWeight: "700", letterSpacing: 0.6 },
-  statValue: { fontSize: 18, fontWeight: "800", marginTop: 6 },
-  statCount: { fontSize: 11, marginTop: 4 },
+  statValue: { fontSize: 16, fontWeight: "800", marginTop: 4 },
+  statCount: { fontSize: 11, marginTop: 2 },
 
   // Ledger section
   ledgerSectionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "baseline",
-    marginTop: 24,
-    marginBottom: 12,
+    marginTop: 12,
+    marginBottom: 8,
   },
   sectionTitle: {
     fontSize: 14,
@@ -1175,8 +1281,20 @@ const styles = StyleSheet.create({
   ledgerReference: { fontSize: 14, fontWeight: "700" },
   ledgerDate: { fontSize: 11, marginTop: 2 },
   ledgerAmountBlock: { alignItems: "flex-end" },
-  ledgerAmount: { fontSize: 15, fontWeight: "800" },
-  ledgerRunningBalance: { fontSize: 10, marginTop: 3 },
+  amountTag: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    marginBottom: 4,
+  },
+  amountTagText: { fontSize: 10, fontWeight: "700" },
+  ledgerBalanceBig: { fontSize: 21, fontWeight: "800" },
+  ledgerBalanceCaption: {
+    fontSize: 9,
+    marginTop: 1,
+    textTransform: "uppercase",
+    letterSpacing: 0.4,
+  },
   ledgerNote: { fontSize: 12, marginTop: 8, fontStyle: "italic" },
 
   // Bill line items

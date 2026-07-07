@@ -1,6 +1,8 @@
 import React, { useCallback, useEffect, useState } from "react";
 import {
   FlatList,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -117,6 +119,14 @@ export function CreateSaleScreen() {
     return productName.includes(term) || productCode.includes(term);
   });
 
+  const parsedQuantity = Number.parseFloat(quantityInput);
+  const quantityError =
+    pendingProduct &&
+    Number.isFinite(parsedQuantity) &&
+    parsedQuantity > pendingProduct.stockQuantity
+      ? `Out of stock — only ${pendingProduct.stockQuantity} ${pendingProduct.unit || "unit"} available`
+      : undefined;
+
   const handlePromptQuantity = (product: Product) => {
     if (product.stockQuantity <= 0) {
       showToast("Product out of stock", "error");
@@ -164,7 +174,10 @@ export function CreateSaleScreen() {
       return;
     }
     if (quantity > pendingProduct.stockQuantity) {
-      showToast("Quantity exceeds stock", "error");
+      showToast(
+        `Out of stock — only ${pendingProduct.stockQuantity} ${pendingProduct.unit || "unit"} available`,
+        "error",
+      );
       return;
     }
 
@@ -258,7 +271,11 @@ export function CreateSaleScreen() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <KeyboardAvoidingView
+      style={[styles.container, { backgroundColor: colors.background }]}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
+    >
       <Dropdown
         label="Select Shop"
         options={shopOptions}
@@ -463,10 +480,12 @@ export function CreateSaleScreen() {
           onChangeText={setQuantityInput}
           keyboardType="decimal-pad"
           placeholder="e.g. 1.5"
+          error={quantityError}
         />
         <CustomButton
           title="Add to Cart"
           onPress={handleAddProduct}
+          disabled={!!quantityError}
           style={{ marginTop: 8 }}
         />
       </Modal>
@@ -612,7 +631,7 @@ export function CreateSaleScreen() {
           style={{ marginTop: 16 }}
         />
       </Modal>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 

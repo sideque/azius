@@ -4,7 +4,6 @@ import { User } from '../../types';
 interface AuthState {
   user: User | null;
   isAuthenticated: boolean;
-  rememberMe: boolean;
   loading: boolean;
   error: string | null;
   initialized: boolean;
@@ -13,7 +12,6 @@ interface AuthState {
 const initialState: AuthState = {
   user: null,
   isAuthenticated: false,
-  rememberMe: false,
   loading: false,
   error: null,
   initialized: false,
@@ -27,10 +25,9 @@ const authSlice = createSlice({
       state.loading = true;
       state.error = null;
     },
-    loginSuccess: (state, action: PayloadAction<{ user: User; rememberMe: boolean }>) => {
+    loginSuccess: (state, action: PayloadAction<{ user: User }>) => {
       state.user = action.payload.user;
       state.isAuthenticated = true;
-      state.rememberMe = action.payload.rememberMe;
       state.loading = false;
       state.error = null;
     },
@@ -41,7 +38,6 @@ const authSlice = createSlice({
     logout: (state) => {
       state.user = null;
       state.isAuthenticated = false;
-      state.rememberMe = false;
     },
     restoreSession: (state, action: PayloadAction<User>) => {
       state.user = action.payload;

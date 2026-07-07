@@ -55,16 +55,40 @@ export function CollectPaymentScreen() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [showReceipt, setShowReceipt] = useState(false);
   const [latestBalance, setLatestBalance] = useState<number | null>(null);
+  const [shopBalances, setShopBalances] = useState<Record<string, number>>({});
 
-  const load = useCallback(() => dispatch(fetchShops()), [dispatch]);
+  const load = useCallback(async () => {
+    await dispatch(fetchShops());
+    // The shop's stored outstandingBalance can drift from the ledger's real
+    // running balance, so build a shopId -> latest ledger balance map (one
+    // query for every shop's ledger rows, all sorted newest-first already)
+    // instead of trusting the stored field for the shop-picker balances.
+    const allEntries = await db.getLedgerEntries();
+    const balances: Record<string, number> = {};
+    for (const entry of allEntries) {
+      if (!(entry.shopId in balances)) {
+        balances[entry.shopId] = entry.balance;
+      }
+    }
+    setShopBalances(balances);
+  }, [dispatch]);
   useFocusEffect(
     useCallback(() => {
       load();
+      // Reset the form every time this tab regains focus so stale entries
+      // from a previous visit don't carry over — always start fresh.
+      setShopId("");
+      setAmount("");
+      setMethod("Cash");
+      setNotes("");
+      setPaymentDate(new Date());
+      setErrors({});
+      setLatestBalance(null);
     }, [load]),
   );
 
   const shopOptions = shops.map((s) => ({
-    label: `${s.shopName} (Bal: ${formatCurrency(s.outstandingBalance)})`,
+    label: `${s.shopName} (Bal: ${formatCurrency(shopBalances[s.id] ?? s.outstandingBalance)})`,
     value: s.id,
   }));
 
@@ -118,7 +142,11 @@ export function CollectPaymentScreen() {
       setNotes("");
       dispatch(fetchShops());
       const entries = await db.getLedgerEntries(shopId);
-      setLatestBalance(entries.length ? entries[0].balance : null);
+      const newBalance = entries.length ? entries[0].balance : null;
+      setLatestBalance(newBalance);
+      if (newBalance !== null) {
+        setShopBalances((prev) => ({ ...prev, [shopId]: newBalance }));
+      }
     } catch (error: any) {
       showToast(error?.message ?? (error as string) ?? "Failed", "error");
     }

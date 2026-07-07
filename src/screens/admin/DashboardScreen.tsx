@@ -26,12 +26,14 @@ export function DashboardScreen() {
 
   const stats = dashboardStats;
 
-  const cashCollected = stats?.paymentsCollectedCash ?? 0;
-  const upiCollected = stats?.paymentsCollectedUPI ?? 0;
-  const bankCollected = stats?.paymentsCollectedBankTransfer ?? 0;
-  const totalCollected = stats?.paymentsCollected ?? 0;
-  const pct = (value: number) =>
-    totalCollected > 0 ? `${Math.round((value / totalCollected) * 100)}% of total` : "No payments yet";
+  const cashCollectedToday = stats?.paymentsCollectedCashToday ?? 0;
+  const upiCollectedToday = stats?.paymentsCollectedUPIToday ?? 0;
+  const bankCollectedToday = stats?.paymentsCollectedBankTransferToday ?? 0;
+  const totalCollectedToday = stats?.paymentsCollectedToday ?? 0;
+  const pctToday = (value: number) =>
+    totalCollectedToday > 0
+      ? `${Math.round((value / totalCollectedToday) * 100)}% of today`
+      : "No payments yet today";
 
   return (
     <ScrollView
@@ -76,8 +78,8 @@ export function DashboardScreen() {
           icon="trophy-outline"
         />
         <DashboardCard
-          title="Payments Collected"
-          value={formatCurrency(totalCollected)}
+          title="Payments Collected Today"
+          value={formatCurrency(totalCollectedToday)}
           color={colors.secondary}
           icon="wallet-outline"
         />
@@ -102,27 +104,27 @@ export function DashboardScreen() {
       </View>
 
       <Text style={[styles.section, { color: colors.text }]}>
-        Payments Collected
+        Payments Collected — Today
       </Text>
       <View style={styles.grid}>
         <DashboardCard
           title="Cash"
-          value={formatCurrency(cashCollected)}
-          subtitle={pct(cashCollected)}
+          value={formatCurrency(cashCollectedToday)}
+          subtitle={pctToday(cashCollectedToday)}
           color={colors.success}
           icon="cash-outline"
         />
         <DashboardCard
           title="Google Pay / UPI"
-          value={formatCurrency(upiCollected)}
-          subtitle={pct(upiCollected)}
+          value={formatCurrency(upiCollectedToday)}
+          subtitle={pctToday(upiCollectedToday)}
           color={colors.secondary}
           icon="phone-portrait-outline"
         />
         <DashboardCard
           title="Bank Transfer"
-          value={formatCurrency(bankCollected)}
-          subtitle={pct(bankCollected)}
+          value={formatCurrency(bankCollectedToday)}
+          subtitle={pctToday(bankCollectedToday)}
           color={colors.info}
           icon="business-outline"
         />

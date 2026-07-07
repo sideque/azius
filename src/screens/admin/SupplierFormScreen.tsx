@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
   StyleSheet,
+  Text,
   View,
 } from "react-native";
 import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
@@ -44,24 +46,47 @@ export function SupplierFormScreen() {
   const [form, setForm] = useState(emptyForm);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
+  const [originalSupplier, setOriginalSupplier] = useState<any>(null);
+  // loadingSupplier = true while fetching fresh data from Firestore
+  const [loadingSupplier, setLoadingSupplier] = useState(isEdit);
 
   useEffect(() => {
     if (supplierId) {
-      getSupplierById(supplierId).then((supplier) => {
-        if (supplier)
-          setForm({
-            supplierName: supplier.supplierName,
-            contactName: supplier.contactName,
-            phoneNumber: supplier.phoneNumber,
-            address: supplier.address,
-            notes: supplier.notes,
-            openingBalance: String(supplier.outstandingBalance ?? ""),
-          });
-      });
-    } else {
-      setForm(emptyForm);
-      setErrors({});
+      let cancelled = false;
+      // Always fetch fresh data from Firestore on edit
+      setLoadingSupplier(true);
+      getSupplierById(supplierId)
+        .then((supplier) => {
+          if (cancelled) return;
+          if (supplier) {
+            setOriginalSupplier(supplier);
+            setForm({
+              supplierName: supplier.supplierName,
+              contactName: supplier.contactName,
+              phoneNumber: supplier.phoneNumber,
+              address: supplier.address,
+              notes: supplier.notes,
+              openingBalance: String(supplier.openingBalance ?? ""),
+            });
+          } else {
+            showToast("Supplier not found", "error");
+          }
+        })
+        .catch(() => {
+          if (!cancelled) showToast("Failed to load supplier details", "error");
+        })
+        .finally(() => {
+          if (!cancelled) setLoadingSupplier(false);
+        });
+      return () => {
+        cancelled = true;
+      };
     }
+    // Creating new supplier — reset form
+    setForm(emptyForm);
+    setOriginalSupplier(null);
+    setErrors({});
+    setLoadingSupplier(false);
   }, [supplierId]);
 
   const update = (key: string, value: string) =>
@@ -78,7 +103,7 @@ export function SupplierFormScreen() {
     const duplicate = suppliers.find(
       (supplier) =>
         supplier.supplierName.trim().toLowerCase() ===
-          form.supplierName.trim().toLowerCase() &&
+        form.supplierName.trim().toLowerCase() &&
         (!isEdit || supplier.id !== supplierId),
     );
 
@@ -91,22 +116,39 @@ export function SupplierFormScreen() {
       setLoading(false);
       return;
     }
-    const startingBalance = parseFloat(form.openingBalance) || 0;
-    const data = {
-      supplierName: form.supplierName.trim(),
-      contactName: form.contactName.trim(),
-      phoneNumber: form.phoneNumber.trim(),
-      address: form.address.trim(),
-      notes: form.notes.trim(),
-      outstandingBalance: startingBalance,
-      openingBalance: startingBalance,
-    };
-
     try {
-      if (isEdit && supplierId) {
-        await dispatch(editSupplier({ id: supplierId, supplier: data }));
+      if (isEdit && supplierId && originalSupplier) {
+        const newOpeningBalance = parseFloat(form.openingBalance) || 0;
+        const oldOpeningBalance = originalSupplier.openingBalance ?? 0;
+        const oldOutstandingBalance = originalSupplier.outstandingBalance ?? 0;
+
+        const updateData: any = {
+          supplierName: form.supplierName.trim(),
+          contactName: form.contactName.trim(),
+          phoneNumber: form.phoneNumber.trim(),
+          address: form.address.trim(),
+          notes: form.notes.trim(),
+        };
+
+        if (newOpeningBalance !== oldOpeningBalance) {
+          const diff = newOpeningBalance - oldOpeningBalance;
+          updateData.openingBalance = newOpeningBalance;
+          updateData.outstandingBalance = oldOutstandingBalance + diff;
+        }
+
+        await dispatch(editSupplier({ id: supplierId, supplier: updateData }));
         showToast("Supplier updated");
       } else {
+        const startingBalance = parseFloat(form.openingBalance) || 0;
+        const data = {
+          supplierName: form.supplierName.trim(),
+          contactName: form.contactName.trim(),
+          phoneNumber: form.phoneNumber.trim(),
+          address: form.address.trim(),
+          notes: form.notes.trim(),
+          outstandingBalance: startingBalance,
+          openingBalance: startingBalance,
+        };
         await dispatch(addSupplier(data));
         showToast("Supplier created");
       }
@@ -119,6 +161,18 @@ export function SupplierFormScreen() {
       setLoading(false);
     }
   };
+
+  // Show full-screen loader while fetching supplier data from Firestore
+  if (isEdit && loadingSupplier) {
+    return (
+      <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={[styles.loadingText, { color: colors.textMuted }]}>
+          Loading supplier details...
+        </Text>
+      </View>
+    );
+  }
 
   return (
     <KeyboardAvoidingView
@@ -195,4 +249,11 @@ const styles = StyleSheet.create({
   scrollContent: { padding: 16, paddingBottom: 40 },
   row: { flexDirection: "row", gap: 12 },
   col: { flex: 1 },
+  loadingContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 12,
+  },
+  loadingText: { fontSize: 14, fontWeight: "500" },
 });

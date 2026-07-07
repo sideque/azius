@@ -1,5 +1,5 @@
 import React from 'react';
-import { Modal as RNModal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { KeyboardAvoidingView, Modal as RNModal, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../theme/ThemeContext';
 import { CustomButton } from './CustomButton';
@@ -55,26 +55,31 @@ export function Modal({ visible, title, onClose, children }: ModalProps) {
   const { colors } = useTheme();
   return (
     <RNModal visible={visible} animationType="slide" transparent>
-      <View style={[styles.overlay, { backgroundColor: colors.overlay }]}>
-        <View style={[styles.modal, { backgroundColor: colors.surface }]}>
-          {/* Handle indicator */}
-          <View style={[styles.handle, { backgroundColor: colors.border }]} />
-          <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
-            <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
-            <Pressable
-              onPress={onClose}
-              style={({ pressed }) => [
-                styles.closeBtn,
-                { backgroundColor: colors.background },
-                pressed && { opacity: 0.7 },
-              ]}
-            >
-              <Ionicons name="close" size={16} color={colors.textSecondary} />
-            </Pressable>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        <View style={[styles.overlay, { backgroundColor: colors.overlay }]}>
+          <View style={[styles.modal, { backgroundColor: colors.surface }]}>
+            {/* Handle indicator */}
+            <View style={[styles.handle, { backgroundColor: colors.border }]} />
+            <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
+              <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
+              <Pressable
+                onPress={onClose}
+                style={({ pressed }) => [
+                  styles.closeBtn,
+                  { backgroundColor: colors.background },
+                  pressed && { opacity: 0.7 },
+                ]}
+              >
+                <Ionicons name="close" size={16} color={colors.textSecondary} />
+              </Pressable>
+            </View>
+            {children}
           </View>
-          {children}
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </RNModal>
   );
 }

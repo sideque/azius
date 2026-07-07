@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from "react";
 import {
   FlatList,
+  KeyboardAvoidingView,
+  Platform,
   ScrollView,
   StyleSheet,
   View,
@@ -14,6 +16,7 @@ import { Ionicons } from "@expo/vector-icons";
 import {
   CustomButton,
   CustomInput,
+  DatePickerField,
   Modal,
   ProductCard,
   SearchBar,
@@ -27,7 +30,7 @@ import { fetchShops } from "../../store/slices/shopSlice";
 import { useTheme } from "../../theme/ThemeContext";
 import { Product, SaleWithDetails } from "../../types";
 import * as db from "../../services/database";
-import { generateId } from "../../utils/formatters";
+import { generateId, toISOString } from "../../utils/formatters";
 import { shareInvoicePdf, printInvoice } from "../../utils/invoice";
 
 export function EditSaleScreen() {
@@ -48,6 +51,7 @@ export function EditSaleScreen() {
 
   const [items, setItems] = useState<SaleWithDetails["items"]>([]);
   const [discount, setDiscount] = useState("0");
+  const [saleDate, setSaleDate] = useState(new Date());
 
   const [editingItem, setEditingItem] = useState<any>(null);
   const [editQty, setEditQty] = useState("");
@@ -82,6 +86,7 @@ export function EditSaleScreen() {
           setSale(details);
           setItems(details.items);
           setDiscount(details.discount.toString());
+          setSaleDate(new Date(details.createdAt));
         } else {
           showToast("Sale not found", "error");
           navigation.goBack();
@@ -105,7 +110,39 @@ export function EditSaleScreen() {
     }
   }, [sale, shops]);
 
+  // How much of this product is already reserved by the sale as originally
+  // loaded from the DB — that quantity is already subtracted from the
+  // product's current stock, so it must be added back when computing how
+  // much the user is still allowed to raise this item to.
+  const getOriginalQty = (productId: string) =>
+    (sale?.items ?? [])
+      .filter((i) => i.productId === productId)
+      .reduce((sum, i) => sum + i.quantity, 0);
+
+  const getMaxAllowedQty = (productId: string) => {
+    const product = products.find((p) => p.id === productId);
+    const currentStock = product?.stockQuantity ?? 0;
+    return currentStock + getOriginalQty(productId);
+  };
+
+  // How much more of pendingProduct can still be added, accounting for what
+  // is already in this bill.
+  const getAvailableForPending = (product: Product) => {
+    const existingQty = items
+      .filter((i) => i.productId === product.id)
+      .reduce((sum, i) => sum + i.quantity, 0);
+    return getMaxAllowedQty(product.id) - existingQty;
+  };
+
   const updateQuantity = (id: string, qty: number) => {
+    const item = items.find((i) => i.id === id);
+    if (item) {
+      const maxAllowed = getMaxAllowedQty(item.productId);
+      if (qty > maxAllowed) {
+        showToast("Quantity exceeds available stock", "error");
+        return;
+      }
+    }
     setItems(
       items.map((i) =>
         i.id === id ? { ...i, quantity: qty, total: qty * i.rate } : i,
@@ -126,8 +163,8 @@ export function EditSaleScreen() {
   });
 
   const handlePromptQuantity = (product: Product) => {
-    if (product.stockQuantity <= 0) {
-      showToast("Product out of stock", "error");
+    if (getAvailableForPending(product) <= 0) {
+      showToast(`${product.productName} is out of stock`, "error");
       return;
     }
     setPendingProduct(product);
@@ -143,8 +180,13 @@ export function EditSaleScreen() {
       showToast("Please enter a valid quantity", "error");
       return;
     }
-    if (quantity > pendingProduct.stockQuantity) {
-      showToast("Quantity exceeds available stock", "error");
+
+    const available = getAvailableForPending(pendingProduct);
+    if (quantity > available) {
+      showToast(
+        `Out of stock — only ${available} ${pendingProduct.unit || "unit"} available`,
+        "error",
+      );
       return;
     }
 
@@ -208,6 +250,7 @@ export function EditSaleScreen() {
           discount: disc,
           grandTotal,
           profit,
+          createdAt: toISOString(saleDate),
         },
       }),
     );
@@ -222,6 +265,7 @@ export function EditSaleScreen() {
         discount: disc,
         grandTotal,
         profit,
+        createdAt: toISOString(saleDate),
       });
       setShowShareModal(true);
     } else {
@@ -282,9 +326,31 @@ export function EditSaleScreen() {
   const subtotal = items.reduce((acc, item) => acc + item.total, 0);
   const grandTotal = Math.max(0, subtotal - (parseFloat(discount) || 0));
 
+  const parsedQuantity = Number.parseFloat(quantityInput);
+  const availableForPending = pendingProduct
+    ? getAvailableForPending(pendingProduct)
+    : 0;
+  const quantityError =
+    pendingProduct &&
+    Number.isFinite(parsedQuantity) &&
+    parsedQuantity > availableForPending
+      ? `Out of stock — only ${availableForPending} ${pendingProduct.unit || "unit"} available`
+      : undefined;
+
+  const parsedEditQty = Number.parseFloat(editQty);
+  const maxEditQty = editingItem ? getMaxAllowedQty(editingItem.productId) : 0;
+  const editQtyError =
+    editingItem && Number.isFinite(parsedEditQty) && parsedEditQty > maxEditQty
+      ? `Out of stock — only ${maxEditQty} available`
+      : undefined;
+
   return (
-    <ScrollView
+    <KeyboardAvoidingView
       style={[styles.container, { backgroundColor: colors.background }]}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+    >
+    <ScrollView
+      style={{ flex: 1 }}
       keyboardShouldPersistTaps="handled"
     >
       {sale && (
@@ -306,6 +372,12 @@ export function EditSaleScreen() {
           </Text>
         </View>
       )}
+
+      <DatePickerField
+        label="Sale Date"
+        value={saleDate}
+        onChange={setSaleDate}
+      />
 
       <View style={styles.sectionHeader}>
         <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 0 }]}>
@@ -495,10 +567,12 @@ export function EditSaleScreen() {
           onChangeText={setQuantityInput}
           keyboardType="decimal-pad"
           placeholder="e.g. 1.5"
+          error={quantityError}
         />
         <CustomButton
           title="Add to Bill"
           onPress={handleAddItemToSale}
+          disabled={!!quantityError}
           style={{ marginTop: 8 }}
         />
       </Modal>
@@ -587,6 +661,10 @@ export function EditSaleScreen() {
         animationType="fade"
         onRequestClose={() => setEditingItem(null)}
       >
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+        >
         <View
           style={{
             flex: 1,
@@ -619,6 +697,7 @@ export function EditSaleScreen() {
               value={editQty}
               onChangeText={setEditQty}
               keyboardType="number-pad"
+              error={editQtyError}
             />
 
             <CustomInput
@@ -631,14 +710,27 @@ export function EditSaleScreen() {
             <CustomButton
               title="Save Changes"
               onPress={() => {
+                const newQty = Number(editQty);
+                if (!Number.isFinite(newQty) || newQty <= 0) {
+                  showToast("Please enter a valid quantity", "error");
+                  return;
+                }
+                if (newQty > getMaxAllowedQty(editingItem.productId)) {
+                  showToast(
+                    `Out of stock — only ${getMaxAllowedQty(editingItem.productId)} available`,
+                    "error",
+                  );
+                  return;
+                }
+
                 setItems((prev) =>
                   prev.map((i) =>
                     i.id === editingItem.id
                       ? {
                           ...i,
-                          quantity: Number(editQty),
+                          quantity: newQty,
                           rate: Number(editRate),
-                          total: Number(editQty) * Number(editRate),
+                          total: newQty * Number(editRate),
                         }
                       : i,
                   ),
@@ -653,8 +745,10 @@ export function EditSaleScreen() {
             <CustomButton title="Cancel" onPress={() => setEditingItem(null)} />
           </View>
         </View>
+        </KeyboardAvoidingView>
       </RNModal>
     </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 

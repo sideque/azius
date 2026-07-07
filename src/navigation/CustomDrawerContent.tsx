@@ -31,11 +31,21 @@ export function CustomDrawerContent(props: any) {
       style={{ backgroundColor: colors.background }}
     >
       <View style={[styles.header, { backgroundColor: colors.primary }]}>
-        <Text style={styles.avatar}>{user?.name?.charAt(0) ?? "A"}</Text>
-        <Text style={styles.name}>{user?.name ?? "Admin"}</Text>
+        <Text style={styles.avatar}>
+          {(user?.name || user?.username || "A").charAt(0).toUpperCase()}
+        </Text>
+        <Text style={styles.name}>{user?.name || "Admin"}</Text>
+        {!!user?.email && <Text style={styles.email}>{user.email}</Text>}
         <Text style={styles.role}>Administrator</Text>
       </View>
       <DrawerItemList {...props} />
+      <DrawerItem
+        label="Settings"
+        icon={({ size }) => (
+          <Ionicons name="settings-outline" size={size} color={colors.textSecondary} />
+        )}
+        onPress={() => props.navigation.navigate("Settings")}
+      />
       <DrawerItem
         label="Switch to Sales Panel"
         icon={({ size }) => (
@@ -82,5 +92,6 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   name: { color: "#fff", fontSize: 18, fontWeight: "800", marginTop: 14, letterSpacing: -0.2 },
+  email: { color: "rgba(255,255,255,0.85)", fontSize: 12, marginTop: 3 },
   role: { color: "rgba(255,255,255,0.85)", fontSize: 12, fontWeight: "600", marginTop: 3, textTransform: 'uppercase', letterSpacing: 0.8 },
 });

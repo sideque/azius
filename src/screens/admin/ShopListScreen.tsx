@@ -1,21 +1,40 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { EmptyState, LoadingSkeleton, SearchBar, ShopCard } from '../../components';
+import { ConfirmationDialog, EmptyState, LoadingSkeleton, SearchBar, ShopCard, useToast } from '../../components';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
-import { fetchShops, setSearch } from '../../store/slices/shopSlice';
+import { fetchShops, removeShop, setSearch } from '../../store/slices/shopSlice';
 import { useTheme } from '../../theme/ThemeContext';
 import { AdminDrawerParamList } from '../../navigation/types';
+import { Shop } from '../../types';
 
 export function ShopListScreen() {
   const { colors } = useTheme();
   const dispatch = useAppDispatch();
+  const { showToast } = useToast();
   const navigation = useNavigation<NativeStackNavigationProp<AdminDrawerParamList>>();
   const { items, loading, search } = useAppSelector((s) => s.shops);
+  const [pendingDelete, setPendingDelete] = useState<Shop | null>(null);
 
   const load = useCallback(() => dispatch(fetchShops()), [dispatch]);
   useFocusEffect(useCallback(() => { load(); }, [load]));
+
+  const handleDelete = (shop: Shop) => {
+    setPendingDelete(shop);
+  };
+
+  const confirmDelete = async () => {
+    if (!pendingDelete) return;
+    const shop = pendingDelete;
+    setPendingDelete(null);
+    try {
+      await dispatch(removeShop(shop.id)).unwrap();
+      showToast('Shop deleted');
+    } catch (error) {
+      showToast('Failed to delete shop', 'error');
+    }
+  };
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -32,10 +51,23 @@ export function ShopListScreen() {
           refreshControl={<RefreshControl refreshing={loading} onRefresh={load} colors={[colors.primary]} />}
           ListEmptyComponent={<EmptyState title="No Shops" message="Add your first shop" icon="storefront-outline" />}
           renderItem={({ item }) => (
-            <ShopCard shop={item} onPress={() => navigation.navigate('ShopForm', { shopId: item.id })} />
+            <ShopCard
+              shop={item}
+              onPress={() => navigation.navigate('ShopForm', { shopId: item.id })}
+              onDelete={() => handleDelete(item)}
+            />
           )}
         />
       )}
+
+      <ConfirmationDialog
+        visible={!!pendingDelete}
+        title="Delete Shop"
+        message={`Are you sure you want to delete "${pendingDelete?.shopName}"? This cannot be undone.`}
+        onConfirm={confirmDelete}
+        onCancel={() => setPendingDelete(null)}
+        destructive
+      />
     </View>
   );
 }

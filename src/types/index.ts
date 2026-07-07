@@ -156,10 +156,10 @@ export interface DashboardStats {
   profitMonth: number;
   profitYear: number;
   outstandingBalance: number;
-  paymentsCollected: number;
-  paymentsCollectedCash?: number;
-  paymentsCollectedUPI?: number;
-  paymentsCollectedBankTransfer?: number;
+  paymentsCollectedToday: number;
+  paymentsCollectedCashToday?: number;
+  paymentsCollectedUPIToday?: number;
+  paymentsCollectedBankTransferToday?: number;
   expensesToday?: number;
   expensesMonth?: number;
   expensesYear?: number;
@@ -184,7 +184,7 @@ export interface NotificationItem {
 }
 
 export interface ReportFilter {
-  period: "daily" | "monthly" | "yearly" | "custom";
+  period: "daily" | "monthly" | "yearly" | "all" | "custom";
   startDate?: string;
   endDate?: string;
   shopId?: string;

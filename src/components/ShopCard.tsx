@@ -1,14 +1,16 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Shop } from '../types';
 import { useTheme } from '../theme/ThemeContext';
 
 interface Props {
   shop: Shop;
   onPress?: () => void;
+  onDelete?: () => void;
 }
 
-export function ShopCard({ shop, onPress }: Props) {
+export function ShopCard({ shop, onPress, onDelete }: Props) {
   const { colors } = useTheme();
   const initials = shop.shopName.substring(0, 2).toUpperCase();
 
@@ -30,6 +32,18 @@ export function ShopCard({ shop, onPress }: Props) {
           <Text style={[styles.owner, { color: colors.textSecondary }]}>{shop.ownerName} • {shop.phoneNumber}</Text>
           <Text style={[styles.address, { color: colors.textMuted }]} numberOfLines={1}>{shop.address}</Text>
         </View>
+        {onDelete && (
+          <Pressable
+            onPress={onDelete}
+            style={({ pressed }) => [
+              styles.deleteBtn,
+              { backgroundColor: colors.errorLight },
+              pressed && { opacity: 0.7 },
+            ]}
+          >
+            <Ionicons name="trash-outline" size={16} color={colors.error} />
+          </Pressable>
+        )}
       </View>
     </Pressable>
   );
@@ -59,4 +73,11 @@ const styles = StyleSheet.create({
   name: { fontSize: 16, fontWeight: '700' },
   owner: { fontSize: 13, marginTop: 3 },
   address: { fontSize: 12, marginTop: 2 },
+  deleteBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 });

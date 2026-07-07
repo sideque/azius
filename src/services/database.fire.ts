@@ -12,7 +12,6 @@ import {
   updateDoc,
   where,
 } from "firebase/firestore";
-
 import { db } from "../config/firebase";
 
 import {
@@ -1267,26 +1266,17 @@ export async function getRecentSales(
       }),
     );
 
-    // Compute totals
-    const subtotal = enrichedItems.reduce(
-      (sum, it) => sum + (it.total ?? 0),
-      0,
-    );
-    const discount = (sale as any).discount ?? 0;
-    const grandTotal = subtotal - discount;
-
-    // Profit = actual revenue received minus cost of goods sold.
-    // The discount reduces revenue but never changes what the goods cost you,
-    // so it must be subtracted directly rather than prorating the cost.
-    const totalCost = await Promise.all(
-      enrichedItems.map(async (it) => {
-        const prod = await getProductById(it.productId);
-        const purchasePrice = prod?.purchasePrice ?? 0;
-        return purchasePrice * it.quantity;
-      }),
-    ).then((vals) => vals.reduce((sum, v) => sum + v, 0));
-
-    const profit = grandTotal - totalCost;
+    // Trust the totals already stored on the sale document — they were
+    // computed once at creation/edit time as (bill total - product cost)
+    // using the purchase price that was actually in effect then. Recomputing
+    // them here from the *current* product purchasePrice would silently
+    // change historical profit whenever a product's cost price is updated
+    // later, which is wrong: profit must reflect what the goods cost at the
+    // time they were sold, not today.
+    const subtotal = Number((sale as any).subtotal ?? 0);
+    const discount = Number((sale as any).discount ?? 0);
+    const grandTotal = Number((sale as any).grandTotal ?? subtotal - discount);
+    const profit = Number((sale as any).profit ?? 0);
 
     // Resolve shop name
     const shop = await getShopById(sale.shopId);
@@ -1414,7 +1404,7 @@ export async function createPayment(
       debit: 0,
       credit: amount,
       balance: newBalance,
-      createdAt,
+      createdAt: paymentDate,
     });
   });
 
@@ -1500,17 +1490,20 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     0,
   );
 
-  const paymentsCollected = payments.reduce(
+  const paymentsToday = payments.filter((payment) =>
+    payment.createdAt.startsWith(today),
+  );
+  const paymentsCollectedToday = paymentsToday.reduce(
     (sum, payment) => sum + payment.amount,
     0,
   );
-  const paymentsCollectedCash = payments
+  const paymentsCollectedCashToday = paymentsToday
     .filter((payment) => payment.paymentMethod === "Cash")
     .reduce((sum, payment) => sum + payment.amount, 0);
-  const paymentsCollectedUPI = payments
+  const paymentsCollectedUPIToday = paymentsToday
     .filter((payment) => payment.paymentMethod === "UPI")
     .reduce((sum, payment) => sum + payment.amount, 0);
-  const paymentsCollectedBankTransfer = payments
+  const paymentsCollectedBankTransferToday = paymentsToday
     .filter((payment) => payment.paymentMethod === "Bank Transfer")
     .reduce((sum, payment) => sum + payment.amount, 0);
 
@@ -1524,10 +1517,10 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     profitMonth: profitMonth - expensesMonth,
     profitYear: profitYear - expensesYear,
     outstandingBalance,
-    paymentsCollected,
-    paymentsCollectedCash,
-    paymentsCollectedUPI,
-    paymentsCollectedBankTransfer,
+    paymentsCollectedToday,
+    paymentsCollectedCashToday,
+    paymentsCollectedUPIToday,
+    paymentsCollectedBankTransferToday,
     expensesToday,
     expensesMonth,
     expensesYear,
@@ -1815,7 +1808,10 @@ export async function updatePaymentData(
       ),
     );
     for (const lDoc of ledgerSnap.docs) {
-      transaction.update(lDoc.ref, { credit: updates.amount });
+      transaction.update(lDoc.ref, {
+        credit: updates.amount,
+        createdAt: updates.paymentDate,
+      });
     }
   });
 
@@ -1839,6 +1835,7 @@ export async function updateSaleData(
     discount: number;
     grandTotal: number;
     profit: number;
+    createdAt?: string;
   },
 ): Promise<void> {
   // ---------- ALL READS ----------
@@ -1857,6 +1854,7 @@ export async function updateSaleData(
   const oldItemsSnap = await getDocs(
     query(saleItemsCollection, where("saleId", "==", saleId)),
   );
+  const oldItems = oldItemsSnap.docs.map((d) => d.data() as SaleItem);
 
   const ledgerSnap = await getDocs(
     query(
@@ -1865,80 +1863,67 @@ export async function updateSaleData(
     ),
   );
 
-  // Read ALL old products
-
-  const oldProducts = await Promise.all(
-    oldItemsSnap.docs.map(async (d) => {
-      const item = d.data() as SaleItem;
-      const ref = doc(productsCollection, item.productId);
-      const snap = await getDoc(ref);
-
-      return {
-        ref,
-        snap,
-        item,
-      };
-    }),
+  // A product already reserved for this sale should only be re-validated
+  // against stock for the *extra* quantity being added on top of what it
+  // already holds — not its full new quantity — otherwise editing an item
+  // upward falsely reports "Insufficient stock" using pre-restore stock.
+  const productIds = Array.from(
+    new Set([
+      ...oldItems.map((i) => i.productId),
+      ...updates.items.map((i) => i.productId),
+    ]),
   );
 
-  // Read ALL new products
-
-  const newProducts = await Promise.all(
-    updates.items.map(async (item) => {
-      const ref = doc(productsCollection, item.productId);
-      const snap = await getDoc(ref);
-
-      return {
-        ref,
-        snap,
-        item,
-      };
-    }),
+  const productSnaps = new Map(
+    await Promise.all(
+      productIds.map(
+        async (productId) =>
+          [productId, await getDoc(doc(productsCollection, productId))] as const,
+      ),
+    ),
   );
 
   // ---------- TRANSACTION ----------
 
   await runTransaction(db, async (transaction) => {
-    // Restore old stock
-
-    for (const old of oldProducts) {
-      if (!old.snap.exists()) continue;
-
-      const stock = Number(old.snap.data().stockQuantity) || 0;
-
-      transaction.update(old.ref, {
-        stockQuantity: stock + old.item.quantity,
-      });
-
-      transaction.delete(doc(saleItemsCollection, old.item.id));
+    for (const old of oldItems) {
+      transaction.delete(doc(saleItemsCollection, old.id));
     }
 
-    // Deduct new stock
-
-    for (const p of newProducts) {
-      if (!p.snap.exists()) {
+    for (const productId of productIds) {
+      const snap = productSnaps.get(productId);
+      if (!snap || !snap.exists()) {
         throw new Error("Product not found");
       }
 
-      const stock = Number(p.snap.data().stockQuantity) || 0;
+      const oldQty = oldItems
+        .filter((i) => i.productId === productId)
+        .reduce((sum, i) => sum + i.quantity, 0);
+      const newQty = updates.items
+        .filter((i) => i.productId === productId)
+        .reduce((sum, i) => sum + i.quantity, 0);
+      const delta = newQty - oldQty;
 
-      if (stock < p.item.quantity) {
+      const stock = Number(snap.data().stockQuantity) || 0;
+      if (delta > 0 && stock < delta) {
         throw new Error("Insufficient stock");
       }
 
-      transaction.update(p.ref, {
-        stockQuantity: stock - p.item.quantity,
+      transaction.update(doc(productsCollection, productId), {
+        stockQuantity: stock - delta,
       });
+    }
 
+    for (const item of updates.items) {
       const newSaleItemRef = doc(saleItemsCollection);
 
       transaction.set(newSaleItemRef, {
         id: newSaleItemRef.id,
         saleId,
-        productId: p.item.productId,
-        quantity: p.item.quantity,
-        rate: p.item.rate,
-        total: p.item.total,
+        productId: item.productId,
+        quantity: item.quantity,
+        rate: item.rate,
+        total: item.total,
       });
     }
 
@@ -1949,6 +1934,7 @@ export async function updateSaleData(
       discount: updates.discount,
       grandTotal: updates.grandTotal,
       profit: updates.profit,
+      ...(updates.createdAt ? { createdAt: updates.createdAt } : {}),
     });
 
     // Update Shop Balance
@@ -1963,12 +1949,13 @@ export async function updateSaleData(
       });
     }
 
-    // Update Ledger (debit amount only — the running `balance` on this and
-    // every later entry is fixed up afterwards by recalculateShopLedgerBalances)
+    // Update Ledger (the running `balance` on this and every later entry is
+    // fixed up afterwards by recalculateShopLedgerBalances)
 
     ledgerSnap.docs.forEach((docSnap) => {
       transaction.update(docSnap.ref, {
         debit: updates.grandTotal,
+        ...(updates.createdAt ? { createdAt: updates.createdAt } : {}),
       });
     });
   });

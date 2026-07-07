@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -11,6 +10,7 @@ import {
 import { useFocusEffect, useNavigation, useRoute } from "@react-navigation/native";
 import { DrawerNavigationProp } from "@react-navigation/drawer";
 import {
+  ConfirmationDialog,
   CustomButton,
   CustomInput,
   DatePickerField,
@@ -21,6 +21,8 @@ import { useTheme } from "../../theme/ThemeContext";
 import {
   createSupplierPayment,
   deleteSupplierPayment,
+  getSupplierBills,
+  getSupplierById,
   getSupplierPayments,
   getSuppliers,
   updateSupplierPaymentData,
@@ -54,15 +56,45 @@ export function SupplierPaymentsScreen() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // Editing state
   const [isEditMode, setIsEditMode] = useState(false);
   const [editingPaymentId, setEditingPaymentId] = useState<string | null>(null);
 
+  // The real total payable amount computed from actual bills & payments
+  const [computedPayable, setComputedPayable] = useState<number | null>(null);
+
   const selectedSupplier = useMemo(
     () => suppliers.find((supplier) => supplier.id === supplierId),
     [supplierId, suppliers],
   );
+
+  // Compute real payable from Firestore: openingBalance + allBills - allPayments
+  const loadRealPayable = useCallback(async (sid: string) => {
+    try {
+      const [supplier, allBills, allPayments] = await Promise.all([
+        getSupplierById(sid),
+        getSupplierBills(sid),
+        getSupplierPayments(sid),
+      ]);
+      const openingBalance = supplier?.openingBalance ?? 0;
+      const billsTotal = allBills.reduce((s, b) => s + b.totalAmount, 0);
+      const paymentsTotal = allPayments.reduce((s, p) => s + p.amount, 0);
+      setComputedPayable(openingBalance + billsTotal - paymentsTotal);
+    } catch {
+      setComputedPayable(null);
+    }
+  }, []);
+
+  // Refresh real payable whenever the selected supplier changes
+  useEffect(() => {
+    if (supplierId) {
+      loadRealPayable(supplierId);
+    } else {
+      setComputedPayable(null);
+    }
+  }, [supplierId, loadRealPayable]);
 
   const loadSuppliers = async () => {
     try {
@@ -181,6 +213,8 @@ export function SupplierPaymentsScreen() {
         );
         showToast("Supplier payment recorded");
         await loadSuppliers();
+        // Refresh the real payable amount after saving
+        await loadRealPayable(supplierId);
         resetForm();
       }
     } catch (error: any) {
@@ -192,33 +226,22 @@ export function SupplierPaymentsScreen() {
 
   const handleDelete = () => {
     if (!editingPaymentId) return;
+    setShowDeleteConfirm(true);
+  };
 
-    Alert.alert(
-      "Delete Supplier Payment",
-      "Are you sure you want to delete this payment? This will update the supplier outstanding balance.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: async () => {
-            setDeleting(true);
-            try {
-              await deleteSupplierPayment(editingPaymentId);
-              showToast("Supplier payment deleted");
-              navigation.navigate("SupplierReports");
-            } catch (error: any) {
-              showToast(
-                error?.message ?? "Failed to delete payment",
-                "error",
-              );
-            } finally {
-              setDeleting(false);
-            }
-          },
-        },
-      ],
-    );
+  const confirmDelete = async () => {
+    if (!editingPaymentId) return;
+    setShowDeleteConfirm(false);
+    setDeleting(true);
+    try {
+      await deleteSupplierPayment(editingPaymentId);
+      showToast("Supplier payment deleted");
+      navigation.navigate("SupplierReports");
+    } catch (error: any) {
+      showToast(error?.message ?? "Failed to delete payment", "error");
+    } finally {
+      setDeleting(false);
+    }
   };
 
   return (
@@ -244,9 +267,8 @@ export function SupplierPaymentsScreen() {
             style={[styles.balanceCard, { backgroundColor: colors.warningLight }]}
           >
             <Text style={{ color: colors.textSecondary }}>
-              Outstanding Balance
+              Total Amount To Pay
             </Text>
-
             <Text
               style={{
                 color: colors.warning,
@@ -254,7 +276,9 @@ export function SupplierPaymentsScreen() {
                 fontWeight: "700",
               }}
             >
-              {formatCurrency(selectedSupplier.outstandingBalance ?? 0)}
+              {computedPayable !== null
+                ? formatCurrency(computedPayable)
+                : "…"}
             </Text>
           </View>
         )}
@@ -311,6 +335,15 @@ export function SupplierPaymentsScreen() {
           />
         )}
       </ScrollView>
+
+      <ConfirmationDialog
+        visible={showDeleteConfirm}
+        title="Delete Supplier Payment"
+        message="Are you sure you want to delete this payment? This will update the supplier outstanding balance."
+        onConfirm={confirmDelete}
+        onCancel={() => setShowDeleteConfirm(false)}
+        destructive
+      />
     </KeyboardAvoidingView>
   );
 }

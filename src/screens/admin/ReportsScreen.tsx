@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import {
+  ConfirmationDialog,
   Dropdown,
   SummaryCard,
   Modal,
@@ -68,6 +69,7 @@ export function ReportsScreen() {
   >(null);
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [pendingDeleteEntry, setPendingDeleteEntry] = useState<LedgerEntry | null>(null);
   const load = useCallback(async () => {
     setLoading(true);
     const filter: ReportFilter = {
@@ -104,6 +106,7 @@ export function ReportsScreen() {
     { label: "Daily", value: "daily" },
     { label: "Monthly", value: "monthly" },
     { label: "Yearly", value: "yearly" },
+    { label: "All Time", value: "all" },
   ];
 
   // reload when filters change
@@ -161,67 +164,54 @@ export function ReportsScreen() {
 
   const handleDeleteEntry = (entry: LedgerEntry | null = selectedEntry) => {
     if (!entry) return;
-    Alert.alert(
-      "Confirm Delete",
-      `Are you sure you want to delete this ${entry.transactionType}? This will revert stock and shop balances.`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: async () => {
-            let targetId: string | number | undefined = entryDetails?.id;
-            try {
-              // If we are deleting directly from the card and don't have details loaded yet
-              if (!targetId || selectedEntry?.id !== entry.id) {
-                if (entry.transactionType === "sale") {
-                  const details = await db.getSaleByInvoiceNumber(
-                    entry.referenceNumber,
-                  );
-                  targetId = details?.id;
-                } else {
-                  const details = await db.getPaymentByReceiptNumber(
-                    entry.referenceNumber,
-                  );
-                  targetId = details?.id;
-                }
-              }
+    setPendingDeleteEntry(entry);
+  };
 
-              if (!targetId) throw new Error("Could not find record to delete");
+  const confirmDeleteEntry = async () => {
+    const entry = pendingDeleteEntry;
+    if (!entry) return;
+    let targetId: string | number | undefined = entryDetails?.id;
+    try {
+      // If we are deleting directly from the card and don't have details loaded yet
+      if (!targetId || selectedEntry?.id !== entry.id) {
+        if (entry.transactionType === "sale") {
+          const details = await db.getSaleByInvoiceNumber(
+            entry.referenceNumber,
+          );
+          targetId = details?.id;
+        } else {
+          const details = await db.getPaymentByReceiptNumber(
+            entry.referenceNumber,
+          );
+          targetId = details?.id;
+        }
+      }
 
-              if (entry.transactionType === "sale") {
-                await dispatch(removeSale(targetId)).unwrap();
-              } else if (entry.transactionType === "payment") {
-                await dispatch(removePayment(targetId)).unwrap();
-              }
-              setShowDetailsModal(false);
-              load(); // Reload reports and ledger
-            } catch (e: any) {
-              console.log("DELETE ERROR =>", e);
-              console.log("TARGET ID =>", targetId );
+      if (!targetId) throw new Error("Could not find record to delete");
 
-              Alert.alert(
-                "Error",
-                typeof e === "string" ? e : e?.message || JSON.stringify(e),
-              );
-            }
-          },
-        },
-      ],
-    );
+      if (entry.transactionType === "sale") {
+        await dispatch(removeSale(targetId)).unwrap();
+      } else if (entry.transactionType === "payment") {
+        await dispatch(removePayment(targetId)).unwrap();
+      }
+      setPendingDeleteEntry(null);
+      setShowDetailsModal(false);
+      load(); // Reload reports and ledger
+    } catch (e: any) {
+      console.log("DELETE ERROR =>", e);
+      console.log("TARGET ID =>", targetId);
+
+      setPendingDeleteEntry(null);
+      Alert.alert(
+        "Error",
+        typeof e === "string" ? e : e?.message || JSON.stringify(e),
+      );
+    }
   };
 
   return (
-    <ScrollView
-      style={[styles.container, { backgroundColor: colors.background }]}
-      refreshControl={
-        <RefreshControl
-          refreshing={loading}
-          onRefresh={load}
-          colors={[colors.primary]}
-        />
-      }
-    >
+    <View style={[styles.screen, { backgroundColor: colors.background }]}>
+    <View style={styles.topSection}>
       <View
         style={[
           styles.tabs,
@@ -266,7 +256,19 @@ export function ReportsScreen() {
           setShopId(v);
         }}
       />
+    </View>
 
+    <ScrollView
+      style={styles.scrollArea}
+      contentContainerStyle={styles.scrollContent}
+      refreshControl={
+        <RefreshControl
+          refreshing={loading}
+          onRefresh={load}
+          colors={[colors.primary]}
+        />
+      }
+    >
       {tab === "sales" && (
         <>
           <SummaryCard
@@ -426,12 +428,25 @@ export function ReportsScreen() {
           </Text>
         )}
       </Modal>
+
+      <ConfirmationDialog
+        visible={!!pendingDeleteEntry}
+        title="Confirm Delete"
+        message={`Are you sure you want to delete this ${pendingDeleteEntry?.transactionType ?? "entry"}? This will revert stock and shop balances.`}
+        onConfirm={confirmDeleteEntry}
+        onCancel={() => setPendingDeleteEntry(null)}
+        destructive
+      />
     </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16 },
+  screen: { flex: 1 },
+  topSection: { paddingHorizontal: 16, paddingTop: 16 },
+  scrollArea: { flex: 1 },
+  scrollContent: { paddingHorizontal: 16, paddingBottom: 16 },
   tabs: {
     flexDirection: "row",
     marginBottom: 20,

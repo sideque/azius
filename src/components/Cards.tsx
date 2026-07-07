@@ -268,7 +268,7 @@ export function LedgerCard({
         <View style={{ flex: 1 }}>
           <View style={[styles.txTypeBadge, { backgroundColor: typeBg }]}>
             <Text style={[styles.txTypeText, { color: typeColor }]}>
-              {isSale ? "Sale (Debit)" : "Payment (Credit)"}
+              {isSale ? "Sale (Credit)" : "Payment (Debit)"}
             </Text>
           </View>
           <Text style={{ color: colors.textMuted, fontSize: 12, marginTop: 4 }}>
@@ -285,7 +285,7 @@ export function LedgerCard({
       <View style={styles.ledgerAmounts}>
         <View>
           <Text style={{ color: colors.textMuted, fontSize: 11, fontWeight: '600', textTransform: 'uppercase' }}>
-            {isSale ? "Debit" : "Credit"}
+            {isSale ? "Credit" : "Debit"}
           </Text>
           <Text style={[styles.ledgerAmount, { color: typeColor }]}>
             {isSale ? `+${formatCurrency(entry.debit)}` : `-${formatCurrency(entry.credit)}`}
@@ -293,9 +293,30 @@ export function LedgerCard({
         </View>
         <View style={{ alignItems: 'flex-end' }}>
           <Text style={{ color: colors.textMuted, fontSize: 11, fontWeight: '600', textTransform: 'uppercase' }}>Balance</Text>
-          <Text style={[styles.ledgerAmount, { color: colors.text }]}>
-            {formatCurrency(entry.balance)}
-          </Text>
+          {(() => {
+            const balanceColor =
+              entry.balance > 0
+                ? colors.warning
+                : entry.balance < 0
+                  ? colors.success
+                  : colors.textMuted;
+            const balanceLabel =
+              entry.balance > 0
+                ? 'You will get (Cr)'
+                : entry.balance < 0
+                  ? 'You will pay (Dr)'
+                  : 'Settled';
+            return (
+              <>
+                <Text style={[styles.ledgerAmount, { color: balanceColor }]}>
+                  {formatCurrency(Math.abs(entry.balance))}
+                </Text>
+                <Text style={{ color: balanceColor, fontSize: 11, fontWeight: '700', marginTop: 2 }}>
+                  {balanceLabel}
+                </Text>
+              </>
+            );
+          })()}
         </View>
       </View>
 

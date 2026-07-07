@@ -1,16 +1,18 @@
 import React, { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
   StyleSheet,
+  Text,
   View,
 } from "react-native";
 import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
 import { CustomButton, CustomInput, useToast } from "../../components";
 import { getShopById, getShops } from "../../services/database";
 import { useAppDispatch } from "../../store/hooks";
-import { addShop, editShop, removeShop } from "../../store/slices/shopSlice";
+import { addShop, editShop } from "../../store/slices/shopSlice";
 import { useTheme } from "../../theme/ThemeContext";
 import { validateShop } from "../../utils/validation";
 import { AdminDrawerParamList } from "../../navigation/types";
@@ -34,34 +36,56 @@ export function ShopFormScreen() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [creditLimit, setCreditLimit] = useState(0);
+  // loadingShop = true means we are fetching from Firestore right now
+  const [loadingShop, setLoadingShop] = useState(isEdit);
+  const [originalShop, setOriginalShop] = useState<any>(null);
 
   useEffect(() => {
     if (shopId) {
-      getShopById(shopId).then((s) => {
-        if (s) {
-          setForm({
-            shopName: s.shopName,
-            ownerName: s.ownerName,
-            phoneNumber: s.phoneNumber,
-            address: s.address,
-            openingBalance: String(s.outstandingBalance ?? ""),
-            notes: s.notes,
-          });
-          setCreditLimit(s.creditLimit);
-        }
-      });
-    } else {
-      setForm({
-        shopName: "",
-        ownerName: "",
-        phoneNumber: "",
-        address: "",
-        openingBalance: "",
-        notes: "",
-      });
-      setCreditLimit(0);
-      setErrors({});
+      let cancelled = false;
+      // Always fetch fresh data from Firestore - never rely on cached store
+      setLoadingShop(true);
+      getShopById(shopId)
+        .then((s) => {
+          if (cancelled) return;
+          if (s) {
+            setOriginalShop(s);
+            setForm({
+              shopName: s.shopName,
+              ownerName: s.ownerName,
+              phoneNumber: s.phoneNumber,
+              address: s.address,
+              openingBalance: String(s.openingBalance ?? ""),
+              notes: s.notes,
+            });
+            setCreditLimit(s.creditLimit);
+          } else {
+            showToast("Shop not found", "error");
+          }
+        })
+        .catch(() => {
+          if (!cancelled) showToast("Failed to load shop details", "error");
+        })
+        .finally(() => {
+          if (!cancelled) setLoadingShop(false);
+        });
+      return () => {
+        cancelled = true;
+      };
     }
+    // Creating new shop — reset everything
+    setForm({
+      shopName: "",
+      ownerName: "",
+      phoneNumber: "",
+      address: "",
+      openingBalance: "",
+      notes: "",
+    });
+    setCreditLimit(0);
+    setOriginalShop(null);
+    setErrors({});
+    setLoadingShop(false);
   }, [shopId]);
 
   const update = (key: string, value: string) =>
@@ -82,7 +106,7 @@ export function ShopFormScreen() {
       const duplicateShop = existingShops.find(
         (shop) =>
           shop.shopName.trim().toLowerCase() ===
-            form.shopName.trim().toLowerCase() &&
+          form.shopName.trim().toLowerCase() &&
           (!isEdit || shop.id !== shopId),
       );
 
@@ -113,22 +137,40 @@ export function ShopFormScreen() {
         return;
       }
 
-      const startingBalance = parseFloat(form.openingBalance) || 0;
-      const data = {
-        shopName: form.shopName.trim(),
-        ownerName: form.ownerName.trim(),
-        phoneNumber: form.phoneNumber.trim(),
-        address: form.address.trim(),
-        creditLimit,
-        outstandingBalance: startingBalance,
-        openingBalance: startingBalance,
-        notes: form.notes.trim(),
-      };
+      if (isEdit && shopId && originalShop) {
+        const newOpeningBalance = parseFloat(form.openingBalance) || 0;
+        const oldOpeningBalance = originalShop.openingBalance ?? 0;
+        const oldOutstandingBalance = originalShop.outstandingBalance ?? 0;
 
-      if (isEdit && shopId) {
-        await dispatch(editShop({ id: shopId, shop: data })).unwrap();
+        const updateData: any = {
+          shopName: form.shopName.trim(),
+          ownerName: form.ownerName.trim(),
+          phoneNumber: form.phoneNumber.trim(),
+          address: form.address.trim(),
+          creditLimit,
+          notes: form.notes.trim(),
+        };
+
+        if (newOpeningBalance !== oldOpeningBalance) {
+          const diff = newOpeningBalance - oldOpeningBalance;
+          updateData.openingBalance = newOpeningBalance;
+          updateData.outstandingBalance = oldOutstandingBalance + diff;
+        }
+
+        await dispatch(editShop({ id: shopId, shop: updateData })).unwrap();
         showToast("Shop updated");
       } else {
+        const startingBalance = parseFloat(form.openingBalance) || 0;
+        const data = {
+          shopName: form.shopName.trim(),
+          ownerName: form.ownerName.trim(),
+          phoneNumber: form.phoneNumber.trim(),
+          address: form.address.trim(),
+          creditLimit,
+          outstandingBalance: startingBalance,
+          openingBalance: startingBalance,
+          notes: form.notes.trim(),
+        };
         await dispatch(addShop(data)).unwrap();
         showToast("Shop created");
       }
@@ -150,13 +192,17 @@ export function ShopFormScreen() {
       setLoading(false);
     }
   };
-  const handleDelete = async () => {
-    if (shopId) {
-      await dispatch(removeShop(shopId));
-      showToast("Shop deleted");
-      navigation.navigate("Shops" as never);
-    }
-  };
+  // Show full-screen loader while fetching shop data from Firestore
+  if (isEdit && loadingShop) {
+    return (
+      <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={[styles.loadingText, { color: colors.textMuted }]}>
+          Loading shop details...
+        </Text>
+      </View>
+    );
+  }
 
   return (
     <KeyboardAvoidingView
@@ -218,14 +264,6 @@ export function ShopFormScreen() {
           onPress={handleSave}
           loading={loading}
         />
-        {isEdit && (
-          <CustomButton
-            title="Delete Shop"
-            onPress={handleDelete}
-            variant="danger"
-            style={{ marginTop: 12 }}
-          />
-        )}
         <CustomButton
           title="Back to Shops"
           onPress={() => {
@@ -253,4 +291,11 @@ const styles = StyleSheet.create({
   scrollContent: { padding: 16, paddingBottom: 40 },
   row: { flexDirection: "row", gap: 12 },
   col: { flex: 1 },
+  loadingContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 12,
+  },
+  loadingText: { fontSize: 14, fontWeight: "500" },
 });

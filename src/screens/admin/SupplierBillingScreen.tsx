@@ -1,7 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  KeyboardAvoidingView,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -293,12 +291,14 @@ export function SupplierBillingScreen() {
   };
 
   const openAddItemModal = () => {
-    setSelectedProductId("");
+    if (!selectedProductId) {
+      setErrors((prev) => ({ ...prev, product: "Please select a product" }));
+      showToast("Please select a product first", "error");
+      return;
+    }
     setQuantity("");
-    setPurchasePrice("");
-    setSellingPrice("");
     setErrors((prev) => {
-      const { product, quantity, purchasePrice, sellingPrice, ...rest } = prev;
+      const { quantity, purchasePrice, sellingPrice, ...rest } = prev;
       return rest;
     });
     setShowAddItemModal(true);
@@ -409,11 +409,7 @@ export function SupplierBillingScreen() {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={[styles.container, { backgroundColor: colors.background }]}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-      keyboardVerticalOffset={Platform.OS === "ios" ? 80 : 0}
-    >
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
     <ScrollView
       style={styles.container}
       contentContainerStyle={styles.scrollContent}
@@ -501,13 +497,65 @@ export function SupplierBillingScreen() {
         />
       </View>
 
-      {/* Add Product Trigger */}
-      <CustomButton
-        title="+ Add Product to Bill"
-        onPress={openAddItemModal}
-        variant="secondary"
-        style={styles.addProductBtn}
-      />
+      {/* Add Product Card */}
+      <View
+        style={[
+          styles.card,
+          { backgroundColor: colors.card, borderColor: colors.border },
+        ]}
+      >
+        <View style={styles.cardHeader}>
+          <Ionicons name="cube-outline" size={16} color={colors.text} />
+          <Text style={[styles.cardTitle, { color: colors.text }]}>
+            Add Product
+          </Text>
+        </View>
+
+        <Dropdown
+          label="Select Product"
+          options={productOptions}
+          value={selectedProductId}
+          onChange={(v) => {
+            setSelectedProductId(v);
+            setErrors((prev) => {
+              const { product, ...rest } = prev;
+              return rest;
+            });
+          }}
+        />
+        {errors.product ? (
+          <Text
+            style={[
+              styles.errorText,
+              { color: colors.error, marginBottom: 12 },
+            ]}
+          >
+            {errors.product}
+          </Text>
+        ) : null}
+
+        {selectedProduct && (
+          <View
+            style={[
+              styles.stockBadge,
+              { backgroundColor: colors.infoLight, flexDirection: "row", alignItems: "center", gap: 6 },
+            ]}
+          >
+            <Ionicons name="cube-outline" size={14} color={colors.info} />
+            <Text style={[styles.stockText, { color: colors.info }]}>
+              Stock Available: {selectedProduct.stockQuantity} {selectedProduct.unit || "units"}
+            </Text>
+          </View>
+        )}
+
+        <CustomButton
+          title="+ Add Product to Bill"
+          onPress={openAddItemModal}
+          variant="secondary"
+          disabled={!selectedProductId}
+          style={styles.addProductBtn}
+        />
+      </View>
 
       {/* Bill Items Receipt Card */}
       {items.length > 0 ? (
@@ -648,36 +696,11 @@ export function SupplierBillingScreen() {
 
     <Modal
       visible={showAddItemModal}
-      title="Add Product to Bill"
+      title={selectedProduct ? selectedProduct.productName : "Add Product to Bill"}
+      position="center"
       onClose={() => setShowAddItemModal(false)}
     >
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-      >
         <ScrollView keyboardShouldPersistTaps="handled">
-          <Dropdown
-            label="Select Product"
-            options={productOptions}
-            value={selectedProductId}
-            onChange={setSelectedProductId}
-          />
-          {errors.product ? (
-            <Text style={[styles.errorText, { color: colors.error, marginBottom: 12 }]}>
-              {errors.product}
-            </Text>
-          ) : null}
-
-          {selectedProduct && (
-            <View
-              style={[styles.stockBadge, { backgroundColor: colors.infoLight, flexDirection: "row", alignItems: "center", gap: 6 }]}
-            >
-              <Ionicons name="cube-outline" size={14} color={colors.info} />
-              <Text style={[styles.stockText, { color: colors.info }]}>
-                Stock Available: {selectedProduct.stockQuantity} {selectedProduct.unit || "units"}
-              </Text>
-            </View>
-          )}
-
           <CustomInput
             label={selectedProduct?.unit ? `Quantity (${selectedProduct.unit})` : "Quantity"}
             placeholder="0"
@@ -716,9 +739,8 @@ export function SupplierBillingScreen() {
             style={{ marginTop: 8 }}
           />
         </ScrollView>
-      </KeyboardAvoidingView>
     </Modal>
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 

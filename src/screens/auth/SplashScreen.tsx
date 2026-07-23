@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { Animated, Dimensions, StyleSheet, Text, View, Easing } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as ExpoSplashScreen from 'expo-splash-screen';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -22,6 +23,10 @@ export function SplashScreen({ onFinish }: { onFinish: () => void }) {
   const dot3 = useRef(new Animated.Value(0.3)).current;
 
   useEffect(() => {
+    // This is the first thing to paint with the same background as the
+    // native splash (see app.json), so hiding it here is a seamless handoff.
+    ExpoSplashScreen.hideAsync().catch(() => {});
+
     // Entrance animation
     Animated.sequence([
       Animated.parallel([

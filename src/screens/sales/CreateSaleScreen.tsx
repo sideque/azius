@@ -1,8 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import {
   FlatList,
-  KeyboardAvoidingView,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -99,7 +97,8 @@ export function CreateSaleScreen() {
   useFocusEffect(
     useCallback(() => {
       load();
-    }, [load]),
+      dispatch(setSelectedShop(null));
+    }, [load, dispatch]),
   );
 
   const shopOptions = shops.map((s) => ({
@@ -271,11 +270,7 @@ export function CreateSaleScreen() {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={[styles.container, { backgroundColor: colors.background }]}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
-    >
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <Dropdown
         label="Select Shop"
         options={shopOptions}
@@ -468,6 +463,7 @@ export function CreateSaleScreen() {
       <Modal
         visible={showQuantityModal}
         title="Select Quantity"
+        position="center"
         onClose={() => {
           setShowQuantityModal(false);
           setPendingProduct(null);
@@ -631,7 +627,7 @@ export function CreateSaleScreen() {
           style={{ marginTop: 16 }}
         />
       </Modal>
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 

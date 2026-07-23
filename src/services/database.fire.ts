@@ -252,6 +252,28 @@ export async function authenticateUser(
   return mapDoc<User>(snapshot.docs[0]);
 }
 
+export async function getUserByUsername(username: string): Promise<User | null> {
+  const q = query(
+    usersCollection,
+    where("username", "==", username.trim()),
+    limit(1),
+  );
+  const snapshot = await getDocs(q);
+  if (snapshot.empty) return null;
+  return mapDoc<User>(snapshot.docs[0]);
+}
+
+export async function getUserByEmail(email: string): Promise<User | null> {
+  const q = query(
+    usersCollection,
+    where("email", "==", email.trim()),
+    limit(1),
+  );
+  const snapshot = await getDocs(q);
+  if (snapshot.empty) return null;
+  return mapDoc<User>(snapshot.docs[0]);
+}
+
 export async function getUserById(id: string): Promise<User | null> {
   const snapshot = await getDoc(doc(usersCollection, id));
   return snapshot.exists() ? mapDoc<User>(snapshot) : null;

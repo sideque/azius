@@ -14,7 +14,7 @@ import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { CustomButton, CustomInput, useToast } from "../../components";
-import { authenticateUser, getDatabase } from "../../services/database";
+import { getUserByEmail, getUserByUsername } from "../../services/database";
 import { useAppDispatch } from "../../store/hooks";
 import {
   loginFailure,
@@ -55,45 +55,6 @@ export function LoginScreen({ navigation }: Props) {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
 
-  // const handleLogin = async () => {
-  //   const validation = validateLogin(username, password);
-  //   setErrors(validation.errors);
-  //   if (!validation.isValid) return;
-
-  //   setLoading(true);
-  //   dispatch(loginStart());
-  //   try {
-  //     await getDatabase();
-  //     const user = await authenticateUser(username, password);
-  //     console.log(user, "user");
-  //     if (user) {
-  //       if (user.role !== selectedRole) {
-  //         dispatch(
-  //           loginFailure(
-  //             `Use ${selectedRole === "admin" ? "admin" : "sales"} credentials`,
-  //           ),
-  //         );
-  //         showToast(
-  //           `This login is for ${selectedRole === "admin" ? "admin" : "sales"} users only`,
-  //           "error",
-  //         );
-  //         return;
-  //       }
-  //       dispatch(loginSuccess({ user }));
-  //       showToast("Login successful!");
-  //       navigation.replace("RoleSelection", { role: selectedRole });
-  //     } else {
-  //       dispatch(loginFailure("Invalid username or password"));
-  //       showToast("Invalid credentials", "error");
-  //     }
-  //   } catch {
-  //     dispatch(loginFailure("Login failed"));
-  //     showToast("Something went wrong", "error");
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // };
-
   const handleLogin = async () => {
     const validation = validateLogin(username, password);
     setErrors(validation.errors);
@@ -103,44 +64,67 @@ export function LoginScreen({ navigation }: Props) {
     dispatch(loginStart());
 
     try {
+      // Firebase Auth requires a real email address. The login field accepts
+      // a username/mobile, so resolve it to the account's email via Firestore
+      // before calling signInWithEmailAndPassword — passing a bare username
+      // straight through fails client-side with auth/invalid-email.
+      const trimmedInput = username.trim();
+      let email = trimmedInput;
+      let matchedUser = null;
+      if (!trimmedInput.includes("@")) {
+        matchedUser = await getUserByUsername(trimmedInput);
+        if (!matchedUser?.email) {
+          dispatch(loginFailure("Invalid username or password"));
+          showToast("Invalid credentials", "error");
+          return;
+        }
+        email = matchedUser.email;
+      }
+
       // 1. Firebase Authentication login
-      const result = await signInWithEmailAndPassword(auth, username, password);
+      const result = await signInWithEmailAndPassword(auth, email, password);
       const uid = result.user.uid;
 
-      // 2. Get user role from Firestore
+      // 2. Get the user's profile doc. It's normally keyed by the Firebase
+      // Auth uid, but some accounts (e.g. seeded/manually-created ones) have
+      // a Firestore doc whose id doesn't match the uid, so fall back to
+      // looking it up by username/email rather than failing the login.
       const userSnap = await getDoc(doc(db, "users", uid));
+      const data = userSnap.exists()
+        ? userSnap.data()
+        : (matchedUser ?? (await getUserByEmail(email)));
 
-      if (!userSnap.exists()) {
+      if (!data) {
         throw new Error("User profile not found");
       }
 
-      // const userData = userSnap.data();
-      const data = userSnap.data();
-
       const user = {
-        id: uid,
+        id: userSnap.exists() ? uid : data.id,
         username: data.username,
         role: data.role,
         name: data.name,
         email: data.email,
       };
 
-      // 3. Role check
-      // if (userData.role !== selectedRole) {
-      //   dispatch(loginFailure(`Use ${selectedRole} credentials`));
-      //   showToast(`This login is for ${selectedRole} only`, "error");
-      //   return;
-      // }
+      // 3. Role check — the Admin/Sales tab is the user's stated intent, so
+      // require it to match the account's actual role rather than silently
+      // routing them into whichever panel the tab happens to be on.
+      if (user.role !== selectedRole) {
+        dispatch(loginFailure(`Use ${selectedRole} credentials`));
+        showToast(`This login is for ${selectedRole} users only`, "error");
+        return;
+      }
 
       // 4. Success
       dispatch(loginSuccess({ user }));
       await AsyncStorage.setItem("@auth_user", JSON.stringify(user));
       showToast("Login successful!");
-      navigation.replace("RoleSelection", { role: selectedRole });
+      navigation.replace("RoleSelection", { role: user.role });
     } catch (error) {
-      console.log(error);
+      const code = (error as { code?: string })?.code ?? "unknown";
+      console.log("Login error:", code, error);
       dispatch(loginFailure("Login failed"));
-      showToast("Invalid credentials", "error");
+      showToast(`Login failed (${code})`, "error");
     } finally {
       setLoading(false);
     }

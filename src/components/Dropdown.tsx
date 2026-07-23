@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import {
   FlatList,
+  KeyboardAvoidingView,
   Modal,
   Pressable,
   StyleSheet,
@@ -67,65 +68,72 @@ export function Dropdown({
       </Pressable>
 
       <Modal visible={open} transparent animationType="fade">
-        <Pressable
-          style={[styles.overlay, { backgroundColor: colors.overlay }]}
-          onPress={() => setOpen(false)}
-        >
-          <Pressable onPress={() => {}} style={{ width: '100%', maxWidth: 400 }}>
-            <View style={[styles.list, { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1 }]}>
-              <TextInput
-                value={search}
-                onChangeText={setSearch}
-                placeholder="Search..."
-                placeholderTextColor={colors.textMuted}
-                style={[
-                  styles.searchInput,
-                  {
-                    borderColor: colors.border,
-                    color: colors.text,
-                    backgroundColor: colors.background,
-                  },
-                ]}
-              />
+        {/* This Modal renders in its own native window on Android, so it
+            does not inherit the Activity's adjustResize behavior — without
+            this, the keyboard would cover the search field/list instead of
+            resizing around it. behavior="padding" (not "height") keeps the
+            transition smooth instead of snapping. */}
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
+          <Pressable
+            style={[styles.overlay, { backgroundColor: colors.overlay }]}
+            onPress={() => setOpen(false)}
+          >
+            <Pressable onPress={() => {}} style={{ width: '100%', maxWidth: 400 }}>
+              <View style={[styles.list, { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1 }]}>
+                <TextInput
+                  value={search}
+                  onChangeText={setSearch}
+                  placeholder="Search..."
+                  placeholderTextColor={colors.textMuted}
+                  style={[
+                    styles.searchInput,
+                    {
+                      borderColor: colors.border,
+                      color: colors.text,
+                      backgroundColor: colors.background,
+                    },
+                  ]}
+                />
 
-              <FlatList
-                data={filteredOptions}
-                contentContainerStyle={{ paddingBottom: 10 }}
-                keyExtractor={(item, index) =>
-                  `${item.value || item.label}-${index}`
-                }
-                renderItem={({ item }) => {
-                  const isSelected = item.value === value;
-                  return (
-                    <Pressable
-                      style={[
-                        styles.option,
-                        isSelected && {
-                          backgroundColor: colors.primaryLight,
-                        },
-                      ]}
-                      onPress={() => {
-                        onChange(item.value);
-                        setOpen(false);
-                      }}
-                    >
-                      <Text
-                        style={{
-                          color: isSelected ? colors.primary : colors.text,
-                          fontWeight: isSelected ? "700" : "500",
-                          fontSize: 15,
+                <FlatList
+                  data={filteredOptions}
+                  contentContainerStyle={{ paddingBottom: 10 }}
+                  keyExtractor={(item, index) =>
+                    `${item.value || item.label}-${index}`
+                  }
+                  renderItem={({ item }) => {
+                    const isSelected = item.value === value;
+                    return (
+                      <Pressable
+                        style={[
+                          styles.option,
+                          isSelected && {
+                            backgroundColor: colors.primaryLight,
+                          },
+                        ]}
+                        onPress={() => {
+                          onChange(item.value);
+                          setOpen(false);
                         }}
                       >
-                        {item.label}
-                      </Text>
-                      {isSelected && <Ionicons name="checkmark" size={16} color={colors.primary} />}
-                    </Pressable>
-                  );
-                }}
-              />
-            </View>
+                        <Text
+                          style={{
+                            color: isSelected ? colors.primary : colors.text,
+                            fontWeight: isSelected ? "700" : "500",
+                            fontSize: 15,
+                          }}
+                        >
+                          {item.label}
+                        </Text>
+                        {isSelected && <Ionicons name="checkmark" size={16} color={colors.primary} />}
+                      </Pressable>
+                    );
+                  }}
+                />
+              </View>
+            </Pressable>
           </Pressable>
-        </Pressable>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );

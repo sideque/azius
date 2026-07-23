@@ -70,6 +70,7 @@ export function ReportsScreen() {
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [pendingDeleteEntry, setPendingDeleteEntry] = useState<LedgerEntry | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const load = useCallback(async () => {
     setLoading(true);
     const filter: ReportFilter = {
@@ -171,6 +172,7 @@ export function ReportsScreen() {
     const entry = pendingDeleteEntry;
     if (!entry) return;
     let targetId: string | number | undefined = entryDetails?.id;
+    setDeleting(true);
     try {
       // If we are deleting directly from the card and don't have details loaded yet
       if (!targetId || selectedEntry?.id !== entry.id) {
@@ -206,6 +208,8 @@ export function ReportsScreen() {
         "Error",
         typeof e === "string" ? e : e?.message || JSON.stringify(e),
       );
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -436,6 +440,7 @@ export function ReportsScreen() {
         onConfirm={confirmDeleteEntry}
         onCancel={() => setPendingDeleteEntry(null)}
         destructive
+        loading={deleting}
       />
     </ScrollView>
     </View>

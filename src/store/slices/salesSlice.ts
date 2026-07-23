@@ -246,7 +246,8 @@ const salesSlice = createSlice({
       })
       .addCase(loadCartFromFirebase.fulfilled, (state, action) => {
         state.cart = action.payload.cart;
-        state.selectedShopId = action.payload.selectedShopId;
+        // Shop selection is intentionally not restored — the user must
+        // re-pick the shop on every fresh app load.
         state.discount = action.payload.discount;
         state.cartSyncVersion += 1;
       })

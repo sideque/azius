@@ -5,6 +5,7 @@ import { Provider } from 'react-redux';
 import { NavigationContainer, DefaultTheme, DarkTheme, NavigationState } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { LinearGradient } from 'expo-linear-gradient';
 import { store } from './src/store';
 import { ThemeProvider, useTheme } from './src/theme/ThemeContext';
 import { ToastProvider } from './src/components';
@@ -54,7 +55,9 @@ function AppContent() {
   };
 
   if (!isNavReady) {
-    return null;
+    // Same background as the native splash / custom SplashScreen so this
+    // brief wait for AsyncStorage never shows a blank default RN screen.
+    return <LinearGradient colors={['#052E22', '#0B7A5B', '#10A375']} style={{ flex: 1 }} />;
   }
 
   return (

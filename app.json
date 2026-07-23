@@ -17,7 +17,8 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.ameeralivk.Azius"
+      "package": "com.ameeralivk.Azius",
+      "softwareKeyboardLayoutMode": "resize"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -26,12 +27,22 @@
       "expo-asset",
       "expo-sqlite",
       "expo-sharing",
-      "expo-font"
+      "expo-font",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#052E22"
+        }
+      ]
     ],
     "extra": {
       "eas": {
-        "projectId": "2e56535e-ce30-4c20-b8c8-8b06bec32740"
+        "projectId": "53af1fde-f4c4-45aa-91bc-8c34620280c6"
       }
-    }
+    },
+    "owner": "ameerali_vk"
   }
 }

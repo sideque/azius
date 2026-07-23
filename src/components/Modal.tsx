@@ -1,5 +1,5 @@
-import React from 'react';
-import { KeyboardAvoidingView, Modal as RNModal, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useCallback, useEffect, useRef } from 'react';
+import { Keyboard, KeyboardAvoidingView, Modal as RNModal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../theme/ThemeContext';
 import { CustomButton } from './CustomButton';
@@ -13,11 +13,12 @@ interface Props {
   confirmText?: string;
   cancelText?: string;
   destructive?: boolean;
+  loading?: boolean;
 }
 
 export function ConfirmationDialog({
   visible, title, message, onConfirm, onCancel,
-  confirmText = 'Confirm', cancelText = 'Cancel', destructive,
+  confirmText = 'Confirm', cancelText = 'Cancel', destructive, loading,
 }: Props) {
   const { colors } = useTheme();
   return (
@@ -35,8 +36,8 @@ export function ConfirmationDialog({
           <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
           <Text style={[styles.message, { color: colors.textSecondary }]}>{message}</Text>
           <View style={styles.actions}>
-            <CustomButton title={cancelText} onPress={onCancel} variant="outline" style={{ flex: 1, marginRight: 8 }} />
-            <CustomButton title={confirmText} onPress={onConfirm} variant={destructive ? 'danger' : 'primary'} style={{ flex: 1 }} />
+            <CustomButton title={cancelText} onPress={onCancel} variant="outline" disabled={loading} style={{ flex: 1, marginRight: 8 }} />
+            <CustomButton title={confirmText} onPress={onConfirm} variant={destructive ? 'danger' : 'primary'} loading={loading} style={{ flex: 1 }} />
           </View>
         </View>
       </View>
@@ -49,36 +50,82 @@ interface ModalProps {
   title: string;
   onClose: () => void;
   children: React.ReactNode;
+  position?: 'bottom' | 'center';
 }
 
-export function Modal({ visible, title, onClose, children }: ModalProps) {
+export function Modal({ visible, title, onClose, children, position = 'bottom' }: ModalProps) {
   const { colors } = useTheme();
-  return (
-    <RNModal visible={visible} animationType="slide" transparent>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      >
-        <View style={[styles.overlay, { backgroundColor: colors.overlay }]}>
-          <View style={[styles.modal, { backgroundColor: colors.surface }]}>
-            {/* Handle indicator */}
-            <View style={[styles.handle, { backgroundColor: colors.border }]} />
-            <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
-              <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
-              <Pressable
-                onPress={onClose}
-                style={({ pressed }) => [
-                  styles.closeBtn,
-                  { backgroundColor: colors.background },
-                  pressed && { opacity: 0.7 },
-                ]}
-              >
-                <Ionicons name="close" size={16} color={colors.textSecondary} />
-              </Pressable>
-            </View>
-            {children}
-          </View>
+  const isCenter = position === 'center';
+  const keyboardVisible = useRef(false);
+
+  useEffect(() => {
+    const showSub = Keyboard.addListener('keyboardDidShow', () => {
+      keyboardVisible.current = true;
+    });
+    const hideSub = Keyboard.addListener('keyboardDidHide', () => {
+      keyboardVisible.current = false;
+    });
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
+
+  // Closing the modal while the keyboard is up races the RNModal
+  // slide/fade-out animation against the keyboard-hide resize on Android,
+  // which is what causes the visible flicker. Dismiss the keyboard first
+  // and only close the modal once it has fully hidden.
+  const handleClose = useCallback(() => {
+    if (keyboardVisible.current) {
+      const hideSub = Keyboard.addListener('keyboardDidHide', () => {
+        hideSub.remove();
+        onClose();
+      });
+      Keyboard.dismiss();
+    } else {
+      onClose();
+    }
+  }, [onClose]);
+
+  const content = (
+    <View style={[isCenter ? styles.centerOverlay : styles.overlay, { backgroundColor: colors.overlay }]}>
+      <View style={[isCenter ? styles.centerModal : styles.modal, { backgroundColor: colors.surface }]}>
+        {/* Handle indicator */}
+        {!isCenter && <View style={[styles.handle, { backgroundColor: colors.border }]} />}
+        <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
+          <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
+          <Pressable
+            onPress={handleClose}
+            style={({ pressed }) => [
+              styles.closeBtn,
+              { backgroundColor: colors.background },
+              pressed && { opacity: 0.7 },
+            ]}
+          >
+            <Ionicons name="close" size={16} color={colors.textSecondary} />
+          </Pressable>
         </View>
+        {children}
+      </View>
+    </View>
+  );
+
+  return (
+    <RNModal
+      visible={visible}
+      animationType={isCenter ? 'fade' : 'slide'}
+      transparent
+      onRequestClose={handleClose}
+    >
+      {/* RN's <Modal> renders in its own native window (a Dialog on Android,
+          a separate UIWindow on iOS) that does not inherit the main
+          Activity's windowSoftInputMode="resize" behavior, so the keyboard
+          can cover content or hide the sheet entirely unless we avoid it
+          here ourselves. `behavior="padding"` is used on both platforms —
+          `"height"` forces a discrete height-style change that snaps/
+          overshoots on Android, which is what caused the visible jitter. */}
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
+        {content}
       </KeyboardAvoidingView>
     </RNModal>
   );
@@ -86,6 +133,18 @@ export function Modal({ visible, title, onClose, children }: ModalProps) {
 
 const styles = StyleSheet.create({
   overlay: { flex: 1, justifyContent: 'flex-end', padding: 0 },
+  centerOverlay: { flex: 1, justifyContent: 'center', padding: 24 },
+  centerModal: {
+    borderRadius: 20,
+    padding: 20,
+    width: '100%',
+    maxHeight: '90%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
+    elevation: 10,
+  },
   // Dialog (centered)
   dialog: {
     margin: 24,
